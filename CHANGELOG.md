@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
 
+## 0.7.0 - 2026-07-19
+
+- Refresh the macOS management window with a dark navigation rail, bright workspace, clearer status badges, and grouped configuration panels.
+- Add a stronger visual hierarchy for connection paths, rule modes, enabled state, and the primary Connect / Disconnect action.
+- Use a larger default window and consistent rounded input controls for a calmer, more spacious editing experience.
+- Keep the proxy, forwarding, localization, credential, and remote-listener behavior unchanged.
+
 ## 0.6.0 - 2026-07-18
 
 - Redesign the management window around rule status, connection paths, compact settings sections, and clearer actions.

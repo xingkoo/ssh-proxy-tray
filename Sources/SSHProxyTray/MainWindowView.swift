@@ -6,6 +6,22 @@ private func ui(_ key: String, _ defaultValue: String) -> String {
     SSHProxyL10n.string(key, default: defaultValue)
 }
 
+private enum AppTheme {
+    static let canvas = Color(red: 0.95, green: 0.96, blue: 0.975)
+    static let panel = Color.white
+    static let sidebar = Color(red: 0.075, green: 0.09, blue: 0.12)
+    static let sidebarRaised = Color(red: 0.12, green: 0.14, blue: 0.18)
+    static let sidebarPrimary = Color.white.opacity(0.94)
+    static let sidebarSecondary = Color.white.opacity(0.58)
+    static let ink = Color(red: 0.10, green: 0.12, blue: 0.16)
+    static let muted = Color(red: 0.38, green: 0.42, blue: 0.48)
+    static let accent = Color(red: 0.34, green: 0.32, blue: 0.82)
+    static let teal = Color(red: 0.08, green: 0.57, blue: 0.52)
+    static let amber = Color(red: 0.83, green: 0.50, blue: 0.15)
+    static let danger = Color(red: 0.78, green: 0.22, blue: 0.25)
+    static let border = Color.black.opacity(0.08)
+}
+
 struct MainWindowView: View {
     @EnvironmentObject private var model: AppModel
 
@@ -27,7 +43,9 @@ struct MainWindowView: View {
                     .environmentObject(model)
             }
         }
-        .frame(minWidth: 980, minHeight: 680)
+        .tint(AppTheme.accent)
+        .background(AppTheme.canvas)
+        .frame(minWidth: 1040, minHeight: 720)
     }
 }
 
@@ -39,15 +57,16 @@ private struct RuleSidebar: View {
             HStack(spacing: 10) {
                 Image(systemName: "point.3.connected.trianglepath.dotted")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(AppTheme.teal)
                     .frame(width: 28, height: 28)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text("SSH Proxy Tray")
                         .font(.headline)
+                        .foregroundStyle(AppTheme.sidebarPrimary)
                     Text(sidebarSummary)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.sidebarSecondary)
                 }
 
                 Spacer()
@@ -61,10 +80,12 @@ private struct RuleSidebar: View {
                 .buttonStyle(.borderless)
                 .help(ui("ui.add_rule", "Add rule"))
             }
-            .padding(.horizontal, 14)
-            .frame(height: 58)
+            .padding(.horizontal, 18)
+            .frame(height: 72)
 
-            Divider()
+            Rectangle()
+                .fill(Color.white.opacity(0.09))
+                .frame(height: 1)
 
             ScrollView {
                 LazyVStack(spacing: 4) {
@@ -84,7 +105,9 @@ private struct RuleSidebar: View {
                 .padding(8)
             }
 
-            Divider()
+            Rectangle()
+                .fill(Color.white.opacity(0.09))
+                .frame(height: 1)
 
             HStack(spacing: 14) {
                 sidebarButton(
@@ -107,10 +130,12 @@ private struct RuleSidebar: View {
                 )
                 Spacer()
             }
-            .padding(.horizontal, 14)
-            .frame(height: 42)
+            .padding(.horizontal, 18)
+            .frame(height: 48)
 
-            Divider()
+            Rectangle()
+                .fill(Color.white.opacity(0.09))
+                .frame(height: 1)
 
             HStack(spacing: 10) {
                 Toggle(
@@ -122,6 +147,7 @@ private struct RuleSidebar: View {
                 )
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .foregroundStyle(AppTheme.sidebarPrimary)
                 .help(ui(
                     "help.launch_at_login",
                     "Starts the app after login. Only rules with auto-connect enabled will connect automatically."
@@ -138,10 +164,11 @@ private struct RuleSidebar: View {
                 .buttonStyle(.borderless)
                 .help(ui("ui.quit", "Quit"))
             }
-            .padding(.horizontal, 14)
-            .frame(height: 46)
+            .padding(.horizontal, 18)
+            .frame(height: 56)
         }
-        .background(.ultraThinMaterial)
+        .foregroundStyle(AppTheme.sidebarPrimary)
+        .background(AppTheme.sidebar)
     }
 
     private var sidebarSummary: String {
@@ -164,7 +191,11 @@ private struct RuleSidebar: View {
             Image(systemName: symbol)
                 .frame(width: 20, height: 20)
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(.plain)
+        .foregroundStyle(AppTheme.sidebarSecondary)
+        .padding(7)
+        .background(AppTheme.sidebarRaised.opacity(0.9))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .disabled(disabled)
         .help(help)
     }
@@ -179,18 +210,19 @@ private struct RuleRow: View {
         HStack(spacing: 10) {
             Image(systemName: modeSymbol)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(profile.enabled ? modeColor : .secondary)
+                .foregroundStyle(profile.enabled ? modeColor : AppTheme.sidebarSecondary)
                 .frame(width: 28, height: 28)
-                .background(modeColor.opacity(profile.enabled ? 0.12 : 0.05))
+                .background(modeColor.opacity(profile.enabled ? 0.18 : 0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(profile.name.isEmpty ? ui("ui.unnamed_rule", "Unnamed Rule") : profile.name)
                     .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(AppTheme.sidebarPrimary)
                     .lineLimit(1)
                 Text(rowSummary)
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.sidebarSecondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
@@ -200,17 +232,17 @@ private struct RuleRow: View {
             Circle()
                 .fill(statusColor)
                 .frame(width: 8, height: 8)
+                .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 1))
                 .help(statusTitle)
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 9)
-        .background(isSelected ? Color.accentColor.opacity(0.14) : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-        .overlay(alignment: .leading) {
+        .padding(.vertical, 11)
+        .background(isSelected ? AppTheme.sidebarRaised : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
             if isSelected {
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(Color.accentColor)
-                    .frame(width: 3, height: 34)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(AppTheme.accent.opacity(0.7), lineWidth: 1)
             }
         }
     }
@@ -239,9 +271,9 @@ private struct RuleRow: View {
 
     private var modeColor: Color {
         switch profile.mode {
-        case .socks5: return .blue
-        case .localForward: return .teal
-        case .remoteForward: return .indigo
+        case .socks5: return Color(red: 0.35, green: 0.62, blue: 0.95)
+        case .localForward: return AppTheme.teal
+        case .remoteForward: return Color(red: 0.62, green: 0.48, blue: 0.95)
         }
     }
 
@@ -250,12 +282,12 @@ private struct RuleRow: View {
     }
 
     private var statusColor: Color {
-        guard profile.enabled else { return .secondary }
+        guard profile.enabled else { return AppTheme.sidebarSecondary }
         switch status {
-        case .disconnected: return .secondary
-        case .connecting, .disconnecting: return .orange
-        case .connected: return .green
-        case .failed: return .red
+        case .disconnected: return AppTheme.sidebarSecondary
+        case .connecting, .disconnecting: return AppTheme.amber
+        case .connected: return Color(red: 0.25, green: 0.82, blue: 0.56)
+        case .failed: return Color(red: 0.98, green: 0.38, blue: 0.38)
         }
     }
 }
@@ -277,7 +309,9 @@ private struct RuleDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             detailHeader
-            Divider()
+            Rectangle()
+                .fill(AppTheme.border)
+                .frame(height: 1)
 
             RouteOverview(profile: profile)
                 .padding(.horizontal, 20)
@@ -392,9 +426,11 @@ private struct RuleDetailView: View {
                 .padding(.bottom, 24)
                 .frame(maxWidth: 860)
                 .frame(maxWidth: .infinity)
+                .textFieldStyle(.roundedBorder)
             }
-            .background(Color(nsColor: .textBackgroundColor))
+            .background(AppTheme.canvas)
         }
+        .background(AppTheme.canvas)
         .alert(
             ui("remote_check.configure_title", "Configure SSH Server?"),
             isPresented: $confirmServerConfiguration
@@ -416,21 +452,26 @@ private struct RuleDetailView: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 8) {
                     Text(profile.name.isEmpty ? ui("ui.unnamed_rule", "Unnamed Rule") : profile.name)
-                        .font(.title3.weight(.semibold))
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(AppTheme.ink)
                         .lineLimit(1)
                     Text(profile.mode.displayName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(modeColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(modeColor.opacity(0.11))
+                        .clipShape(Capsule())
                 }
                 HStack(spacing: 6) {
                     Circle().fill(statusColor).frame(width: 8, height: 8)
                     Text(profile.enabled ? status.title : ui("status.disabled", "Disabled"))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.muted)
                     if running {
                         Label(ui("ui.configuration_locked", "Configuration locked while connected"), systemImage: "lock.fill")
                             .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(AppTheme.muted)
                     }
                 }
             }
@@ -440,6 +481,7 @@ private struct RuleDetailView: View {
             Toggle(ui("ui.enabled", "Enabled"), isOn: enabledBinding)
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .foregroundStyle(AppTheme.muted)
 
             endpointCopyControl
 
@@ -460,9 +502,17 @@ private struct RuleDetailView: View {
                 .disabled(!profile.enabled)
             }
         }
-        .padding(.horizontal, 20)
-        .frame(height: 76)
-        .background(Color(nsColor: .textBackgroundColor))
+        .padding(.horizontal, 26)
+        .frame(height: 88)
+        .background(AppTheme.panel)
+    }
+
+    private var modeColor: Color {
+        switch profile.mode {
+        case .socks5: return Color(red: 0.28, green: 0.45, blue: 0.86)
+        case .localForward: return AppTheme.teal
+        case .remoteForward: return Color(red: 0.53, green: 0.38, blue: 0.80)
+        }
     }
 
     @ViewBuilder
@@ -892,17 +942,28 @@ private struct SettingsSection<Content: View>: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 Image(systemName: symbol)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.accent)
                     .frame(width: 18)
-                Text(title).font(.headline)
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(AppTheme.ink)
                 if let helpTitle, let helpMessage {
                     ContextHelpButton(title: helpTitle, message: helpMessage)
                 }
             }
-            Divider()
+            Rectangle()
+                .fill(AppTheme.border)
+                .frame(height: 1)
             content
         }
-        .padding(.vertical, 8)
+        .padding(18)
+        .background(AppTheme.panel)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.035), radius: 12, y: 4)
     }
 }
 
@@ -930,8 +991,10 @@ private struct DisclosureSection<Content: View>: View {
                 withAnimation(.easeInOut(duration: 0.16)) { isExpanded.toggle() }
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: symbol).foregroundStyle(.secondary).frame(width: 18)
-                    Text(title).font(.headline).foregroundStyle(.primary)
+                    Image(systemName: symbol).foregroundStyle(AppTheme.accent).frame(width: 18)
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(AppTheme.ink)
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
@@ -947,7 +1010,14 @@ private struct DisclosureSection<Content: View>: View {
                 content
             }
         }
-        .padding(.vertical, 8)
+        .padding(18)
+        .background(AppTheme.panel)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.035), radius: 12, y: 4)
     }
 }
 
@@ -963,8 +1033,8 @@ private struct SettingRow<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             Text(title)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.muted)
             content.frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
