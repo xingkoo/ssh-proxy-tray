@@ -49,6 +49,7 @@ final class TunnelRunner {
     private var httpProxyServer: LocalHTTPProxyServer?
     private var remoteForwardInspector: RemoteForwardInspector?
     private var controlSocketPath: String?
+    private var remoteForwardPort: Int?
     private var logs: [String] = []
     private var stopping = false
     private var terminalFailureMessage: String?
@@ -77,6 +78,7 @@ final class TunnelRunner {
         let socketPath = "/tmp/spt-\(UUID().uuidString.prefix(12)).sock"
         try? FileManager.default.removeItem(atPath: socketPath)
         controlSocketPath = socketPath
+        remoteForwardPort = profile.mode == .remoteForward ? profile.remotePort : nil
 
         let process = Process()
         let pipe = Pipe()
@@ -139,7 +141,18 @@ final class TunnelRunner {
         }
         if process.isRunning {
             update(.disconnecting)
-            process.terminate()
+            if let remoteForwardInspector {
+                remoteForwardInspector.closeControlMaster { [weak self, weak process] in
+                    guard let self, let process, self.process === process else { return }
+                    if process.isRunning { process.terminate() }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak process] in
+                    if let process, process.isRunning { process.terminate() }
+                }
+            } else {
+                process.terminate()
+            }
+            return
         }
         cleanup(clearProcess: false)
         if !process.isRunning { update(.disconnected) }
@@ -194,6 +207,7 @@ final class TunnelRunner {
         guard self.process === process else { return }
         let wasStopping = stopping
         let terminalFailureMessage = terminalFailureMessage
+        let remoteForwardPort = remoteForwardPort
         self.terminalFailureMessage = nil
         cleanup()
         if wasStopping {
@@ -204,11 +218,21 @@ final class TunnelRunner {
             update(.failed(terminalFailureMessage))
             return
         }
-        let detail = logs.last(where: { !$0.isEmpty }) ?? SSHProxyL10n.format(
-            "runner.ssh_exited",
-            default: "ssh exited with status %d.",
-            status
-        )
+        let detail: String
+        if let remoteForwardPort,
+           logs.contains(where: { $0.localizedCaseInsensitiveContains("remote port forwarding failed") }) {
+            detail = SSHProxyL10n.format(
+                "runner.remote_forward_failed",
+                default: "The SSH server could not open remote port %d. Another SSH session may already be using it, or the server policy may have rejected the request.",
+                remoteForwardPort
+            )
+        } else {
+            detail = logs.last(where: { !$0.isEmpty }) ?? SSHProxyL10n.format(
+                "runner.ssh_exited",
+                default: "ssh exited with status %d.",
+                status
+            )
+        }
         update(.failed(detail))
     }
 
@@ -349,6 +373,7 @@ final class TunnelRunner {
             try? FileManager.default.removeItem(atPath: controlSocketPath)
         }
         controlSocketPath = nil
+        remoteForwardPort = nil
         if clearProcess { process = nil }
     }
 

@@ -152,6 +152,16 @@ final class RemoteForwardInspector {
         for process in active where process.isRunning { process.terminate() }
     }
 
+    func closeControlMaster(completion: @escaping () -> Void) {
+        runSSH(arguments: [
+            "-S", controlPath,
+            "-O", "exit",
+            destination
+        ], timeout: 3) { _ in
+            completion()
+        }
+    }
+
     private func runRemoteShell(
         _ command: String,
         timeout: TimeInterval = 15,

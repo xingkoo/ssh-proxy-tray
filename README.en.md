@@ -20,7 +20,7 @@ Typical uses include:
 
 - Native SwiftUI macOS app with no third-party runtime dependencies.
 - Consumer-style desktop workspace with a light rule rail, floating rule rows, a bright configuration area, status badges, and custom rounded controls.
-- English and Simplified Chinese UI, following the preferred macOS language.
+- English and Simplified Chinese UI with an in-app Follow System / 简体中文 / English switcher that updates without restarting.
 - Bilingual contextual help for rule types, connection state, forwarding direction, addresses, ports, and advanced SSH options.
 - Multiple concurrent rules with independent enabled and runtime states.
 - One Proxy rule and one `ssh -D` connection for separately configurable SOCKS5 and HTTP/HTTPS ports.

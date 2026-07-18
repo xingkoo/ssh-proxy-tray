@@ -34,6 +34,7 @@
 "askpass.timed_out" = "The local password broker timed out.";
 "runner.ssh_exited" = "ssh exited with status %d.";
 "runner.local_port_did_not_open" = "Local proxy port did not open.";
+"runner.remote_forward_failed" = "The SSH server could not open remote port %d. Another SSH session may already be using it, or the server policy may have rejected the request.";
 "http_proxy.invalid_port" = "The HTTP proxy port is invalid.";
 "http_proxy.listener_failed" = "The HTTP proxy listener failed: %@";
 
@@ -58,6 +59,10 @@
 "ui.delete_rule" = "Delete rule";
 "ui.launch_at_login" = "Launch at login";
 "ui.quit" = "Quit";
+"ui.language" = "Language";
+"language.system" = "Follow System";
+"language.simplified_chinese" = "Simplified Chinese";
+"language.english" = "English";
 "ui.unnamed_rule" = "Unnamed Rule";
 "ui.enabled" = "Enabled";
 "ui.copy_endpoint" = "Copy endpoint";

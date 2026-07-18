@@ -25,10 +25,11 @@ private enum AppTheme {
 
 struct MainWindowView: View {
     @EnvironmentObject private var model: AppModel
+    @AppStorage(SSHProxyL10n.languageDefaultsKey) private var language = "system"
 
     var body: some View {
         HStack(spacing: 0) {
-            RuleSidebar()
+            RuleSidebar(language: $language)
                 .environmentObject(model)
                 .frame(width: 264)
 
@@ -54,11 +55,14 @@ struct MainWindowView: View {
         .tint(AppTheme.accent)
         .background(AppTheme.canvas)
         .frame(minWidth: 1060, minHeight: 720)
+        .id(language)
     }
 }
 
 private struct RuleSidebar: View {
     @EnvironmentObject private var model: AppModel
+    @Binding var language: String
+    @State private var showingLanguagePicker = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -137,6 +141,7 @@ private struct RuleSidebar: View {
                     help: ui("ui.import_ssh_config_help", "Import hosts from ~/.ssh/config"),
                     action: model.importSSHConfigProfiles
                 )
+                languageMenu
                 sidebarButton(
                     symbol: "trash",
                     help: ui("ui.delete_rule", "Delete rule"),
@@ -194,6 +199,55 @@ private struct RuleSidebar: View {
             model.connectedCount,
             model.profiles.count
         )
+    }
+
+    private var languageMenu: some View {
+        Button {
+            showingLanguagePicker.toggle()
+        } label: {
+            Image(systemName: "globe")
+                .frame(width: 20, height: 20)
+                .padding(7)
+                .background(AppTheme.sidebarRaised.opacity(0.9))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(AppTheme.sidebarSecondary)
+        .help(ui("ui.language", "Language"))
+        .popover(isPresented: $showingLanguagePicker, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(ui("ui.language", "Language"))
+                    .font(.headline)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 4)
+                languageOption("system", title: ui("language.system", "Follow System"))
+                languageOption("zh-Hans", title: ui("language.simplified_chinese", "Simplified Chinese"))
+                languageOption("en", title: ui("language.english", "English"))
+            }
+            .padding(10)
+            .frame(width: 210)
+        }
+    }
+
+    private func languageOption(_ value: String, title: String) -> some View {
+        Button {
+            language = value
+            showingLanguagePicker = false
+        } label: {
+            HStack {
+                Text(title)
+                    .foregroundStyle(AppTheme.ink)
+                Spacer()
+                if language == value {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(AppTheme.accent)
+                }
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 32)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func sidebarButton(

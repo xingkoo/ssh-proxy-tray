@@ -34,6 +34,7 @@
 "askpass.timed_out" = "本地密码代理已超时。";
 "runner.ssh_exited" = "ssh 已退出，状态码为 %d。";
 "runner.local_port_did_not_open" = "本地代理端口未能打开。";
+"runner.remote_forward_failed" = "SSH 服务器无法打开远程端口 %d。该端口可能已被其他 SSH 会话占用，或服务器策略拒绝了本次请求。";
 "http_proxy.invalid_port" = "HTTP 代理端口无效。";
 "http_proxy.listener_failed" = "HTTP 代理监听失败：%@";
 
@@ -58,6 +59,10 @@
 "ui.delete_rule" = "删除规则";
 "ui.launch_at_login" = "登录时启动";
 "ui.quit" = "退出";
+"ui.language" = "语言";
+"language.system" = "跟随系统";
+"language.simplified_chinese" = "简体中文";
+"language.english" = "English";
 "ui.unnamed_rule" = "未命名规则";
 "ui.enabled" = "启用";
 "ui.copy_endpoint" = "复制端点";

@@ -1,8 +1,10 @@
 import Foundation
 
 public enum SSHProxyL10n {
+    public static let languageDefaultsKey = "SSHProxyTray.language"
+
     public static func string(_ key: String, default defaultValue: String) -> String {
-        Bundle.main.localizedString(forKey: key, value: defaultValue, table: nil)
+        localizedBundle.localizedString(forKey: key, value: defaultValue, table: nil)
     }
 
     public static func format(
@@ -15,5 +17,15 @@ public enum SSHProxyL10n {
             locale: Locale.current,
             arguments: arguments
         )
+    }
+
+    private static var localizedBundle: Bundle {
+        guard let language = UserDefaults.standard.string(forKey: languageDefaultsKey),
+              language != "system",
+              let path = Bundle.main.path(forResource: language, ofType: "lproj"),
+              let bundle = Bundle(path: path) else {
+            return .main
+        }
+        return bundle
     }
 }

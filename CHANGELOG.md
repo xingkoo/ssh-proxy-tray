@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
 
+## 0.8.1 - 2026-07-19
+
+- Add an in-app language popover for Follow System, Simplified Chinese, and English; the full window updates immediately without a restart.
+- Replace the generic remote-forward failure with a localized explanation that the remote port may already be used by another SSH session or rejected by server policy.
+- Close the active OpenSSH ControlMaster explicitly before falling back to process termination, reducing the chance of stale remote forwards after a normal disconnect.
+- Keep `CFBundleInfoDictionaryVersion` at Apple's standard `6.0` while advancing the app version independently.
+
 ## 0.8.0 - 2026-07-19
 
 - Rebuild the window shell as a consumer-style desktop workspace instead of a traditional settings form.
