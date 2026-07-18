@@ -40,14 +40,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let hostingController = NSHostingController(rootView: content)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1160, height: 780),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "SSH Proxy Tray"
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
-        window.toolbarStyle = .unifiedCompact
+        window.isMovableByWindowBackground = true
         window.isOpaque = false
         window.backgroundColor = NSColor(calibratedWhite: 0.95, alpha: 1)
         window.contentViewController = hostingController

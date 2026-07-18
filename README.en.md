@@ -19,7 +19,7 @@ Typical uses include:
 ## Features
 
 - Native SwiftUI macOS app with no third-party runtime dependencies.
-- Modern management window with a dark rule rail, bright configuration workspace, status badges, and grouped settings panels.
+- Consumer-style desktop workspace with a light rule rail, floating rule rows, a bright configuration area, status badges, and custom rounded controls.
 - English and Simplified Chinese UI, following the preferred macOS language.
 - Bilingual contextual help for rule types, connection state, forwarding direction, addresses, ports, and advanced SSH options.
 - Multiple concurrent rules with independent enabled and runtime states.

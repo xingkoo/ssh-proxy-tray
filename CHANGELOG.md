@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
 
+## 0.8.0 - 2026-07-19
+
+- Rebuild the window shell as a consumer-style desktop workspace instead of a traditional settings form.
+- Add a light navigation rail with floating rule rows, a brand mark, and calmer utility controls.
+- Replace the system split view, segmented controls, and default text-field appearance with a custom content header, mode selector, access selector, authentication menu, and soft input surfaces.
+- Extend the content beneath the title bar for a cleaner macOS window and keep locked fields readable while a tunnel is running.
+
 ## 0.7.0 - 2026-07-19
 
 - Refresh the macOS management window with a dark navigation rail, bright workspace, clearer status badges, and grouped configuration panels.

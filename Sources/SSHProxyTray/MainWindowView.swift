@@ -7,15 +7,16 @@ private func ui(_ key: String, _ defaultValue: String) -> String {
 }
 
 private enum AppTheme {
-    static let canvas = Color(red: 0.95, green: 0.96, blue: 0.975)
+    static let canvas = Color(red: 0.965, green: 0.97, blue: 0.98)
     static let panel = Color.white
-    static let sidebar = Color(red: 0.075, green: 0.09, blue: 0.12)
-    static let sidebarRaised = Color(red: 0.12, green: 0.14, blue: 0.18)
-    static let sidebarPrimary = Color.white.opacity(0.94)
-    static let sidebarSecondary = Color.white.opacity(0.58)
+    static let sidebar = Color(red: 0.94, green: 0.95, blue: 0.965)
+    static let sidebarRaised = Color.white
+    static let sidebarPrimary = Color(red: 0.12, green: 0.14, blue: 0.19)
+    static let sidebarSecondary = Color(red: 0.43, green: 0.47, blue: 0.54)
     static let ink = Color(red: 0.10, green: 0.12, blue: 0.16)
-    static let muted = Color(red: 0.38, green: 0.42, blue: 0.48)
-    static let accent = Color(red: 0.34, green: 0.32, blue: 0.82)
+    static let muted = Color(red: 0.42, green: 0.46, blue: 0.53)
+    static let accent = Color(red: 0.15, green: 0.66, blue: 0.48)
+    static let purple = Color(red: 0.42, green: 0.34, blue: 0.84)
     static let teal = Color(red: 0.08, green: 0.57, blue: 0.52)
     static let amber = Color(red: 0.83, green: 0.50, blue: 0.15)
     static let danger = Color(red: 0.78, green: 0.22, blue: 0.25)
@@ -26,26 +27,33 @@ struct MainWindowView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
             RuleSidebar()
                 .environmentObject(model)
-                .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 330)
-        } detail: {
-            if let id = model.selectedProfileID,
-               let index = model.profiles.firstIndex(where: { $0.id == id }) {
-                RuleDetailView(
-                    profile: $model.profiles[index],
-                    password: $model.enteredPassword
-                )
-                .environmentObject(model)
-            } else {
-                EmptyRulesView()
+                .frame(width: 264)
+
+            Rectangle()
+                .fill(AppTheme.border)
+                .frame(width: 1)
+
+            Group {
+                if let id = model.selectedProfileID,
+                   let index = model.profiles.firstIndex(where: { $0.id == id }) {
+                    RuleDetailView(
+                        profile: $model.profiles[index],
+                        password: $model.enteredPassword
+                    )
                     .environmentObject(model)
+                } else {
+                    EmptyRulesView()
+                        .environmentObject(model)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .tint(AppTheme.accent)
         .background(AppTheme.canvas)
-        .frame(minWidth: 1040, minHeight: 720)
+        .frame(minWidth: 1060, minHeight: 720)
     }
 }
 
@@ -57,12 +65,15 @@ private struct RuleSidebar: View {
             HStack(spacing: 10) {
                 Image(systemName: "point.3.connected.trianglepath.dotted")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(AppTheme.teal)
-                    .frame(width: 28, height: 28)
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(AppTheme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    .shadow(color: AppTheme.accent.opacity(0.22), radius: 8, y: 4)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text("SSH Proxy Tray")
-                        .font(.headline)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(AppTheme.sidebarPrimary)
                     Text(sidebarSummary)
                         .font(.caption)
@@ -75,16 +86,21 @@ private struct RuleSidebar: View {
                     model.addProfile()
                 } label: {
                     Image(systemName: "plus")
-                        .frame(width: 22, height: 22)
+                        .font(.system(size: 13, weight: .bold))
+                        .frame(width: 30, height: 30)
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.plain)
+                .foregroundStyle(AppTheme.sidebarPrimary)
+                .background(AppTheme.sidebarRaised)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .shadow(color: Color.black.opacity(0.05), radius: 6, y: 2)
                 .help(ui("ui.add_rule", "Add rule"))
             }
             .padding(.horizontal, 18)
-            .frame(height: 72)
+            .frame(height: 86)
 
             Rectangle()
-                .fill(Color.white.opacity(0.09))
+                .fill(AppTheme.border)
                 .frame(height: 1)
 
             ScrollView {
@@ -106,7 +122,7 @@ private struct RuleSidebar: View {
             }
 
             Rectangle()
-                .fill(Color.white.opacity(0.09))
+                .fill(AppTheme.border)
                 .frame(height: 1)
 
             HStack(spacing: 14) {
@@ -134,7 +150,7 @@ private struct RuleSidebar: View {
             .frame(height: 48)
 
             Rectangle()
-                .fill(Color.white.opacity(0.09))
+                .fill(AppTheme.border)
                 .frame(height: 1)
 
             HStack(spacing: 10) {
@@ -333,13 +349,7 @@ private struct RuleDetailView: View {
                                 TextField(ui("ui.name", "Name"), text: $profile.name)
                             }
                             SettingRow(title: ui("ui.type", "Type")) {
-                                Picker(ui("ui.type", "Type"), selection: $profile.mode) {
-                                    ForEach(TunnelMode.allCases, id: \.self) { mode in
-                                        Text(mode.displayName).tag(mode).help(modeHelp(mode))
-                                    }
-                                }
-                                .labelsHidden()
-                                .pickerStyle(.segmented)
+                                ModeSelector(selection: $profile.mode, help: modeHelp)
                             }
                             SettingRow(title: ui("ui.automation", "Automation")) {
                                 Toggle(
@@ -426,7 +436,7 @@ private struct RuleDetailView: View {
                 .padding(.bottom, 24)
                 .frame(maxWidth: 860)
                 .frame(maxWidth: .infinity)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(SoftTextFieldStyle())
             }
             .background(AppTheme.canvas)
         }
@@ -491,6 +501,7 @@ private struct RuleDetailView: View {
                 } label: {
                     Label(ui("ui.disconnect", "Disconnect"), systemImage: "stop.fill")
                 }
+                .buttonStyle(ActionButtonStyle(tint: AppTheme.danger))
                 .disabled(status == .disconnecting)
             } else {
                 Button {
@@ -498,7 +509,7 @@ private struct RuleDetailView: View {
                 } label: {
                     Label(ui("ui.connect", "Connect"), systemImage: "play.fill")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(ActionButtonStyle(tint: AppTheme.accent))
                 .disabled(!profile.enabled)
             }
         }
@@ -545,13 +556,7 @@ private struct RuleDetailView: View {
             }
         case .remoteForward:
             SettingRow(title: ui("ui.remote_access_scope", "Who can access")) {
-                Picker(ui("ui.remote_access_scope", "Who can access"), selection: remoteAccessBinding) {
-                    Text(ui("ui.remote_access_server_only", "SSH server only")).tag(RemoteAccessScope.serverOnly)
-                    Text(ui("ui.remote_access_external", "External devices")).tag(RemoteAccessScope.external)
-                    Text(ui("ui.remote_access_custom", "Custom address")).tag(RemoteAccessScope.custom)
-                }
-                .labelsHidden()
-                .pickerStyle(.segmented)
+                AccessScopeSelector(selection: remoteAccessBinding)
             }
             if remoteAccessBinding.wrappedValue == .custom {
                 SettingRow(title: ui("ui.remote_bind_address", "Remote bind address")) {
@@ -577,12 +582,7 @@ private struct RuleDetailView: View {
     @ViewBuilder
     private var sshConnectionFields: some View {
         SettingRow(title: ui("ui.authentication", "Authentication")) {
-            Picker(ui("ui.authentication", "Authentication"), selection: $profile.authentication) {
-                ForEach(AuthenticationMethod.allCases, id: \.self) { method in
-                    Text(method.displayName).tag(method)
-                }
-            }
-            .labelsHidden()
+            AuthenticationSelector(selection: $profile.authentication)
         }
         SettingRow(title: profile.authentication == .sshConfig ? ui("ui.host_alias", "Host alias") : ui("ui.host", "Host")) {
             TextField("", text: $profile.sshHost).labelsHidden()
@@ -803,6 +803,127 @@ private enum RemoteAccessScope: Hashable {
     case serverOnly
     case external
     case custom
+}
+
+private struct ModeSelector: View {
+    @Binding var selection: TunnelMode
+    let help: (TunnelMode) -> String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(TunnelMode.allCases, id: \.self) { mode in
+                Button {
+                    withAnimation(.easeOut(duration: 0.16)) { selection = mode }
+                } label: {
+                    Label(mode.displayName, systemImage: symbol(for: mode))
+                        .font(.system(size: 12, weight: selection == mode ? .semibold : .medium))
+                        .foregroundStyle(selection == mode ? AppTheme.ink : AppTheme.muted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(selection == mode ? AppTheme.panel : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .shadow(
+                            color: selection == mode ? Color.black.opacity(0.07) : .clear,
+                            radius: 5,
+                            y: 2
+                        )
+                }
+                .buttonStyle(.plain)
+                .help(help(mode))
+            }
+        }
+        .padding(4)
+        .background(Color.black.opacity(0.045))
+        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+    }
+
+    private func symbol(for mode: TunnelMode) -> String {
+        switch mode {
+        case .socks5: return "network"
+        case .localForward: return "arrow.right"
+        case .remoteForward: return "arrow.left"
+        }
+    }
+}
+
+private struct AccessScopeSelector: View {
+    @Binding var selection: RemoteAccessScope
+
+    var body: some View {
+        HStack(spacing: 4) {
+            option(.serverOnly, ui("ui.remote_access_server_only", "SSH server only"))
+            option(.external, ui("ui.remote_access_external", "External devices"))
+            option(.custom, ui("ui.remote_access_custom", "Custom address"))
+        }
+        .padding(4)
+        .background(Color.black.opacity(0.045))
+        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+    }
+
+    private func option(_ scope: RemoteAccessScope, _ title: String) -> some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.16)) { selection = scope }
+        } label: {
+            Text(title)
+                .font(.system(size: 12, weight: selection == scope ? .semibold : .medium))
+                .foregroundStyle(selection == scope ? AppTheme.ink : AppTheme.muted)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(selection == scope ? AppTheme.panel : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .shadow(
+                    color: selection == scope ? Color.black.opacity(0.07) : .clear,
+                    radius: 5,
+                    y: 2
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct AuthenticationSelector: View {
+    @Binding var selection: AuthenticationMethod
+
+    var body: some View {
+        Menu {
+            ForEach(AuthenticationMethod.allCases, id: \.self) { method in
+                Button {
+                    selection = method
+                } label: {
+                    if selection == method {
+                        Label(method.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(method.displayName)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: authenticationSymbol)
+                    .foregroundStyle(AppTheme.accent)
+                Text(selection.displayName)
+                    .foregroundStyle(AppTheme.ink)
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(AppTheme.muted)
+            }
+            .padding(.horizontal, 11)
+            .frame(height: 36)
+            .background(Color.black.opacity(0.045))
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var authenticationSymbol: String {
+        switch selection {
+        case .sshConfig: return "terminal"
+        case .keyFile: return "key"
+        case .password: return "lock"
+        }
+    }
 }
 
 private struct RouteOverview: View {
@@ -1262,9 +1383,42 @@ private struct EmptyRulesView: View {
     }
 }
 
+private struct SoftTextFieldStyle: TextFieldStyle {
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(AppTheme.ink)
+            .padding(.horizontal, 11)
+            .frame(height: 36)
+            .background(Color.black.opacity(0.045))
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .stroke(Color.black.opacity(0.04), lineWidth: 1)
+            }
+    }
+}
+
+private struct ActionButtonStyle: ButtonStyle {
+    let tint: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .frame(height: 34)
+            .background(tint.opacity(configuration.isPressed ? 0.78 : 1))
+            .clipShape(Capsule())
+            .shadow(color: tint.opacity(0.22), radius: 7, y: 3)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
 private extension View {
     func configurationLocked(_ locked: Bool) -> some View {
-        disabled(locked)
-            .opacity(locked ? 0.82 : 1)
+        allowsHitTesting(!locked)
+            .opacity(locked ? 0.94 : 1)
     }
 }
