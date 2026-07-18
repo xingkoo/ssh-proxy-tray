@@ -6,6 +6,7 @@ import SSHProxyCore
 enum AppModelError: LocalizedError {
     case passwordRequired
     case askPassHelperMissing
+    case processGuardMissing
     case localPortInUse(Int)
     case ruleDisabled
     case sshConfigMissing
@@ -17,6 +18,11 @@ enum AppModelError: LocalizedError {
             return SSHProxyL10n.string("app_error.password_required", default: "Enter the SSH password.")
         case .askPassHelperMissing:
             return SSHProxyL10n.string("app_error.askpass_missing", default: "The password helper is missing from the app bundle.")
+        case .processGuardMissing:
+            return SSHProxyL10n.string(
+                "app_error.process_guard_missing",
+                default: "The SSH process guard is missing from the app bundle. Reinstall the application."
+            )
         case .localPortInUse(let port):
             return SSHProxyL10n.format(
                 "app_error.local_port_in_use",
@@ -69,6 +75,7 @@ final class AppModel: ObservableObject {
     private var isLoading = true
 
     init() {
+        OrphanedTunnelReaper.reap()
         do {
             let configuration = try configurationStore.load()
             profiles = configuration.profiles
@@ -388,7 +395,8 @@ final class AppModel: ObservableObject {
     }
 
     private func connectAutomaticProfiles() {
-        for (offset, profile) in profiles.filter({ $0.enabled && $0.autoConnect }).enumerated() {
+        let automaticProfiles = profiles.filter { $0.enabled && $0.autoConnect }
+        for (offset, profile) in automaticProfiles.enumerated() {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(offset) * 0.2) { [weak self] in
                 self?.connect(profile)
             }

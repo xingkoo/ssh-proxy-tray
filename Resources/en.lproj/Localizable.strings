@@ -26,6 +26,7 @@
 "keychain.operation_failed" = "Keychain operation failed (%d).";
 "app_error.password_required" = "Enter the SSH password.";
 "app_error.askpass_missing" = "The password helper is missing from the app bundle.";
+"app_error.process_guard_missing" = "The SSH process guard is missing from the app bundle. Reinstall the application.";
 "app_error.local_port_in_use" = "Local port %d is already in use. Choose another port.";
 "app_error.rule_disabled" = "Enable this rule before connecting.";
 "app_error.ssh_config_missing" = "~/.ssh/config does not exist or cannot be read.";

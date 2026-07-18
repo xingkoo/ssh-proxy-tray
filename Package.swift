@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "SSHProxyCore", targets: ["SSHProxyCore"]),
         .executable(name: "SSHProxyTray", targets: ["SSHProxyTray"]),
         .executable(name: "SSHAskPass", targets: ["SSHAskPass"]),
+        .executable(name: "SSHProcessGuard", targets: ["SSHProcessGuard"]),
         .executable(name: "ssh-proxy-trayctl", targets: ["SSHProxyTrayCLI"])
     ],
     targets: [
@@ -20,6 +21,7 @@ let package = Package(
             dependencies: ["SSHProxyCore"]
         ),
         .executableTarget(name: "SSHAskPass"),
+        .executableTarget(name: "SSHProcessGuard"),
         .executableTarget(
             name: "SSHProxyTrayCLI",
             dependencies: ["SSHProxyCore"]

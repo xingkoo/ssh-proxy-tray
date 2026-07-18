@@ -45,6 +45,7 @@ final class TunnelRunner {
     var onUpdate: ((TunnelStatus, [String]) -> Void)?
 
     private var process: Process?
+    private var processGuardPipe: Pipe?
     private var errorPipe: Pipe?
     private var askPassBroker: AskPassBroker?
     private var httpProxyServer: LocalHTTPProxyServer?
@@ -84,16 +85,29 @@ final class TunnelRunner {
 
         let process = Process()
         let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
         var arguments = SSHArgumentsBuilder.arguments(for: profile)
         arguments.insert(contentsOf: [
             "-o", "ControlMaster=yes",
             "-o", "ControlPersist=no",
             "-o", "ControlPath=\(socketPath)"
         ], at: 0)
-        process.arguments = arguments
+        let processGuardPath = siblingExecutablePath(named: "SSHProcessGuard")
+        let processGuardAvailable = FileManager.default.isExecutableFile(atPath: processGuardPath)
+        if processGuardAvailable {
+            let lifetimePipe = Pipe()
+            process.executableURL = URL(fileURLWithPath: processGuardPath)
+            process.arguments = ["--", "/usr/bin/ssh"] + arguments
+            process.standardInput = lifetimePipe
+            processGuardPipe = lifetimePipe
+        } else if Bundle.main.bundleURL.pathExtension.lowercased() == "app" {
+            cleanup()
+            throw AppModelError.processGuardMissing
+        } else {
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+            process.arguments = arguments
+            process.standardInput = FileHandle.nullDevice
+        }
         process.environment = environment
-        process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
         process.standardError = pipe
 
@@ -150,11 +164,19 @@ final class TunnelRunner {
                     guard let self, let process, self.process === process else { return }
                     if process.isRunning { process.terminate() }
                 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak process] in
-                    if let process, process.isRunning { process.terminate() }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self, weak process] in
+                    guard let self, let process, self.process === process, process.isRunning else { return }
+                    if let lifetimePipe = self.processGuardPipe {
+                        lifetimePipe.fileHandleForWriting.closeFile()
+                    } else {
+                        process.terminate()
+                    }
                 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak process] in
-                    if let process, process.isRunning {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self, weak process] in
+                    guard let self, let process, self.process === process, process.isRunning else { return }
+                    if self.processGuardPipe != nil {
+                        process.terminate()
+                    } else {
                         Darwin.kill(process.processIdentifier, SIGKILL)
                     }
                 }
@@ -376,6 +398,8 @@ final class TunnelRunner {
     private func cleanup(clearProcess: Bool = true) {
         errorPipe?.fileHandleForReading.readabilityHandler = nil
         errorPipe = nil
+        processGuardPipe?.fileHandleForWriting.closeFile()
+        processGuardPipe = nil
         askPassBroker?.stop()
         askPassBroker = nil
         httpProxyServer?.stop()
@@ -403,5 +427,11 @@ final class TunnelRunner {
         case .keyFile, .password:
             return "\(profile.username)@\(profile.sshHost)"
         }
+    }
+
+    private func siblingExecutablePath(named name: String) -> String {
+        let executableDirectory = Bundle.main.executableURL?.deletingLastPathComponent()
+            ?? URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
+        return executableDirectory.appendingPathComponent(name).path
     }
 }

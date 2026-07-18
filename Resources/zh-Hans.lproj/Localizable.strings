@@ -26,6 +26,7 @@
 "keychain.operation_failed" = "钥匙串操作失败（%d）。";
 "app_error.password_required" = "请输入 SSH 密码。";
 "app_error.askpass_missing" = "应用包中缺少密码辅助程序。";
+"app_error.process_guard_missing" = "应用包中缺少 SSH 进程守护程序，请重新安装应用。";
 "app_error.local_port_in_use" = "本地端口 %d 已被占用，请选择其他端口。";
 "app_error.rule_disabled" = "请先启用此规则再连接。";
 "app_error.ssh_config_missing" = "~/.ssh/config 不存在或无法读取。";

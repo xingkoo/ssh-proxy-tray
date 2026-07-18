@@ -20,8 +20,9 @@
 - 自动配置 `GatewayPorts` 永远不会静默执行。它需要用户在警告中明确确认和服务器免密码 `sudo`，只写入专用 sshd drop-in，使用 `sshd -t` 校验，reload 而不是 restart SSH；校验或 reload 失败时恢复原文件。
 - `GatewayPorts clientspecified` 是服务器级策略，可能允许其他已授权 SSH 用户请求非 loopback 远程监听。防火墙和 `PermitListen` 仍由服务器管理员负责。
 - 本地端口检查使用固定参数执行 `/usr/sbin/lsof` 并解析结构化 `-F` 字段；profile 值不会被插入 shell 命令。
-- 进程终止永远不会自动执行。每次都需要明确确认，只发送 SIGTERM，并拒绝 PID 1 和当前 SSH Proxy Tray 进程。用户必须自行确认占用进程可以安全停止。
+- 端口检查中的进程终止永远不会自动执行。每次都需要明确确认，只发送 SIGTERM，并拒绝 PID 1 和当前 SSH Proxy Tray 进程。用户必须自行确认占用进程可以安全停止。
 - 应用退出会等待受管 SSH ControlMaster 和子进程退出。有界 SIGKILL 兜底只作用于本应用创建并拥有的 SSH 子进程。
+- 打包后的隧道通过私有管道连接生命周期守护进程。应用崩溃或被强制结束会关闭管道，守护进程随即终止自己的 SSH 子进程。启动恢复只会自动选择已被 PID 1 接管、同时精确匹配本应用 ControlMaster 参数与 `/tmp/spt-*.sock` 格式的 `/usr/bin/ssh`；普通 SSH 会话不会被选中。
 
 ## SSH 信任
 

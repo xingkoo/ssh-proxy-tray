@@ -24,6 +24,7 @@ This repository contains the SSH Proxy Tray macOS application.
 - Never change remote sshd policy silently. Automatic `GatewayPorts clientspecified` configuration requires an explicit warning confirmation, passwordless sudo, a dedicated drop-in backup, `sshd -t`, reload instead of restart, rollback on failure, in-place forward refresh, and post-change inspection.
 - Disabling external access changes only the profile bind address. Never automatically revert server-wide `GatewayPorts`, which may be shared by other users and rules.
 - App termination must wait for every managed SSH runner to close its ControlMaster and exit; force-stop fallbacks may target only app-owned SSH child processes.
+- Every packaged SSH process must run through `SSHProcessGuard`, whose owner pipe closes on crashes or forced termination. Startup orphan recovery may terminate only reparented `/usr/bin/ssh` processes that exactly match this app's ControlMaster arguments and `/tmp/spt-*.sock` format.
 - Local port inspection must use fixed-argument structured process APIs. Process termination requires explicit confirmation, uses SIGTERM, and must reject PID 1 and the running app process.
 - Every user-facing app string must use a stable localization key with matching `en` and `zh-Hans` values. Persisted profile values and SSH arguments must remain language-independent.
 - Ambiguous networking concepts must provide localized contextual help that states the direction, a concrete use case, and any exposure boundary. Help must remain accessible while a running rule locks editable fields.

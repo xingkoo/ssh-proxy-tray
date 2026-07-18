@@ -18,17 +18,19 @@ done
 
 swift build -c release --product SSHProxyTray
 swift build -c release --product SSHAskPass
+swift build -c release --product SSHProcessGuard
 swift build -c release --product ssh-proxy-trayctl
 
 rm -rf "$APP"
 mkdir -p "$BIN_DIR" "$RESOURCES_DIR"
 cp "$ROOT/.build/release/SSHProxyTray" "$BIN_DIR/SSHProxyTray"
 cp "$ROOT/.build/release/SSHAskPass" "$BIN_DIR/SSHAskPass"
+cp "$ROOT/.build/release/SSHProcessGuard" "$BIN_DIR/SSHProcessGuard"
 cp "$ROOT/Config/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 cp -R "$ROOT/Resources/en.lproj" "$ROOT/Resources/zh-Hans.lproj" "$RESOURCES_DIR/"
 
-chmod 755 "$BIN_DIR/SSHProxyTray" "$BIN_DIR/SSHAskPass"
+chmod 755 "$BIN_DIR/SSHProxyTray" "$BIN_DIR/SSHAskPass" "$BIN_DIR/SSHProcessGuard"
 codesign --force --deep --sign - "$APP"
 
 rm -f "$ROOT/dist/ssh-proxy-tray-macos.zip"

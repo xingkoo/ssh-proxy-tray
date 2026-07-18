@@ -33,6 +33,7 @@ Typical uses include:
 - Explicit port configuration; new rules choose an available port starting at `18080`.
 - Automatic local-port inspection with listener process names and PIDs; an explicitly confirmed action can send SIGTERM to an external occupying process.
 - Application exit waits for all managed SSH connections and ControlMaster sessions to close, avoiding leftover processes that retain ports.
+- An independent lifetime guard closes the corresponding SSH process if the app crashes or is force-terminated. The next launch also strictly recovers orphaned tunnels left by older versions so remote-forward ports are not left occupied.
 - Launch at login and per-rule auto-connect.
 - Never changes the macOS system proxy, PAC, or VPN configuration.
 

@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
 
+## 0.9.1 - 2026-07-19
+
+- 打包后的每条 SSH 隧道都通过生命周期守护进程运行；应用崩溃或被强制结束时，守护进程会关闭对应 SSH。
+- 下次启动时回收可严格识别的 SSH Proxy Tray 孤儿进程，释放旧版本异常退出后遗留的远程转发端口。
+- 安装时优先请求应用正常退出，只有超时后才执行有界终止兜底。
+- 自动恢复只选择已被 PID 1 接管、同时精确匹配本应用 ControlMaster 参数与控制 socket 格式的 `/usr/bin/ssh`；普通 SSH 会话不会被选中。
+
 ## 0.9.0 - 2026-07-19
 
 - 应用退出时等待所有受管 SSH Runner 完成 ControlMaster 关闭并退出；有界 TERM/KILL 兜底只作用于应用自己创建的 SSH 子进程。

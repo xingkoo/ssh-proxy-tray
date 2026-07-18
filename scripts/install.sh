@@ -14,8 +14,21 @@ if [[ ! -d "$SOURCE" ]]; then
     "$ROOT/scripts/build-app.sh"
 fi
 
+if pgrep -x SSHProxyTray >/dev/null 2>&1; then
+    osascript -e 'tell application id "io.github.xingkoo.ssh-proxy-tray" to quit' >/dev/null 2>&1 &
+    quit_request_pid=$!
+    for _ in {1..20}; do
+        kill -0 "$quit_request_pid" 2>/dev/null || break
+        sleep 0.1
+    done
+    kill -TERM "$quit_request_pid" 2>/dev/null || true
+    wait "$quit_request_pid" 2>/dev/null || true
+fi
+for _ in {1..40}; do
+    pgrep -x SSHProxyTray >/dev/null 2>&1 || break
+    sleep 0.1
+done
 for pid in $(pgrep -x SSHProxyTray 2>/dev/null || true); do
-    pkill -TERM -P "$pid" 2>/dev/null || true
     kill -TERM "$pid" 2>/dev/null || true
 done
 for _ in {1..20}; do

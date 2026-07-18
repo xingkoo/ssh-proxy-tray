@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
 
+## 0.9.1 - 2026-07-19
+
+- Run every packaged SSH tunnel through a lifetime guard that closes the SSH process when the app crashes or is force-terminated.
+- Recover strictly identified orphaned SSH Proxy Tray processes on the next launch, releasing remote-forward ports left by older versions.
+- Make installation request a graceful application quit before using a bounded termination fallback.
+- Keep recovery scoped to reparented `/usr/bin/ssh` processes with this app's exact ControlMaster options and control-socket format; ordinary SSH sessions are never selected.
+
 ## 0.9.0 - 2026-07-19
 
 - Delay application termination until every managed SSH runner has closed its ControlMaster and exited; use bounded TERM/KILL fallbacks only for app-owned SSH children.
