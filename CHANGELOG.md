@@ -2,6 +2,14 @@
 
 [English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
 
+## 0.5.0 - 2026-07-18
+
+- Let one Proxy rule expose SOCKS5 and optional HTTP/HTTPS endpoints through a single `ssh -D` connection.
+- Add a loopback-only local HTTP-to-SOCKS adapter supporting HTTPS CONNECT and ordinary HTTP proxy requests.
+- Add separate SOCKS and HTTP port configuration, conflict validation, endpoint summaries, and copy actions.
+- Preserve backward compatibility: existing profiles remain SOCKS-only until HTTP is explicitly enabled; new Proxy rules enable both endpoints by default.
+- Add bounded HTTP headers and handshakes, proxy credential stripping, parser/encoder tests, and bilingual UI/security documentation.
+
 ## 0.4.0 - 2026-07-18
 
 - Add bilingual contextual help for availability versus connection state, rule types, authentication, forwarding, and advanced SSH options.

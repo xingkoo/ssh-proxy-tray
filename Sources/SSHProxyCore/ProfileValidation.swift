@@ -10,6 +10,8 @@ public enum ProfileValidationError: LocalizedError, Equatable {
     case certificateFileNotFound
     case invalidLocalHost
     case invalidLocalPort
+    case invalidHTTPProxyPort
+    case proxyPortsMustDiffer
     case missingRemoteHost
     case invalidRemotePort
     case invalidConnectTimeout
@@ -36,6 +38,10 @@ public enum ProfileValidationError: LocalizedError, Equatable {
             return SSHProxyL10n.string("validation.invalid_local_host", default: "Local bind host must be 127.0.0.1 or localhost.")
         case .invalidLocalPort:
             return SSHProxyL10n.string("validation.invalid_local_port", default: "Local port must be between 1 and 65535.")
+        case .invalidHTTPProxyPort:
+            return SSHProxyL10n.string("validation.invalid_http_proxy_port", default: "HTTP proxy port must be between 1 and 65535.")
+        case .proxyPortsMustDiffer:
+            return SSHProxyL10n.string("validation.proxy_ports_must_differ", default: "SOCKS and HTTP proxy ports must be different.")
         case .missingRemoteHost:
             return SSHProxyL10n.string("validation.missing_remote_host", default: "Enter the remote destination or bind host.")
         case .invalidRemotePort:
@@ -66,6 +72,14 @@ public enum ProfileValidator {
         }
         guard ["127.0.0.1", "localhost"].contains(profile.localHost) else {
             throw ProfileValidationError.invalidLocalHost
+        }
+        if profile.mode == .socks5, let httpProxyPort = profile.httpProxyPort {
+            guard (1...65535).contains(httpProxyPort) else {
+                throw ProfileValidationError.invalidHTTPProxyPort
+            }
+            guard httpProxyPort != profile.localPort else {
+                throw ProfileValidationError.proxyPortsMustDiffer
+            }
         }
 
         if profile.authentication != .sshConfig {

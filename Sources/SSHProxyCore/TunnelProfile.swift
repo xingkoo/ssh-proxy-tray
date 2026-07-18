@@ -25,7 +25,7 @@ public enum TunnelMode: String, Codable, CaseIterable, Sendable {
     public var displayName: String {
         switch self {
         case .socks5:
-            return SSHProxyL10n.string("mode.socks_proxy", default: "SOCKS Proxy")
+            return SSHProxyL10n.string("mode.proxy", default: "Proxy")
         case .localForward:
             return SSHProxyL10n.string("mode.local_forward", default: "Local Forward")
         case .remoteForward:
@@ -68,6 +68,7 @@ public struct TunnelProfile: Codable, Equatable, Identifiable, Sendable {
     public var mode: TunnelMode
     public var localHost: String
     public var localPort: Int
+    public var httpProxyPort: Int?
     public var remoteHost: String
     public var remotePort: Int
     public var autoConnect: Bool
@@ -91,6 +92,7 @@ public struct TunnelProfile: Codable, Equatable, Identifiable, Sendable {
         mode: TunnelMode = .socks5,
         localHost: String = "127.0.0.1",
         localPort: Int = 18080,
+        httpProxyPort: Int? = nil,
         remoteHost: String = "127.0.0.1",
         remotePort: Int = 3128,
         autoConnect: Bool = false,
@@ -113,6 +115,7 @@ public struct TunnelProfile: Codable, Equatable, Identifiable, Sendable {
         self.mode = mode
         self.localHost = localHost
         self.localPort = localPort
+        self.httpProxyPort = httpProxyPort
         self.remoteHost = remoteHost
         self.remotePort = remotePort
         self.autoConnect = autoConnect
@@ -126,7 +129,7 @@ public struct TunnelProfile: Codable, Equatable, Identifiable, Sendable {
     public var proxyURL: String {
         switch mode {
         case .socks5:
-            return "socks5://\(localHost):\(localPort)"
+            return socksProxyURL
         case .localForward:
             return "tcp://\(localHost):\(localPort)"
         case .remoteForward:
@@ -134,12 +137,24 @@ public struct TunnelProfile: Codable, Equatable, Identifiable, Sendable {
         }
     }
 
+    public var socksProxyURL: String {
+        "socks5://\(localHost):\(localPort)"
+    }
+
+    public var httpProxyURL: String? {
+        guard mode == .socks5 else { return nil }
+        return httpProxyPort.map { "http://\(localHost):\($0)" }
+    }
+
     public var enabled: Bool { isEnabled ?? true }
 
     public var endpointSummary: String {
         switch mode {
         case .socks5:
-            return "\(localHost):\(localPort)"
+            if let httpProxyPort {
+                return "SOCKS \(localHost):\(localPort) · HTTP \(localHost):\(httpProxyPort)"
+            }
+            return "SOCKS \(localHost):\(localPort)"
         case .localForward:
             return "\(localHost):\(localPort) -> \(remoteHost):\(remotePort)"
         case .remoteForward:

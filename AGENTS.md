@@ -16,7 +16,9 @@ This repository contains the SSH Proxy Tray macOS application.
 - Build SSH invocations as argument arrays; never construct shell commands from profile values.
 - Keep transport-specific process behavior behind a small boundary so a Windows backend can be added later.
 - Keep each saved rule independently enabled and independently connectable; never collapse runtime state into one global SSH process.
-- `SOCKS Proxy`, `Local Forward`, and `Remote Forward` map to OpenSSH `-D`, `-L`, and `-R` respectively.
+- `Proxy`, `Local Forward`, and `Remote Forward` map to OpenSSH `-D`, `-L`, and `-R` respectively.
+- A Proxy rule may expose both SOCKS5 and HTTP/HTTPS endpoints. Keep one `ssh -D` process and route the loopback-only HTTP listener through that SOCKS endpoint; never open a second SSH process for HTTP.
+- The local HTTP adapter must support HTTPS CONNECT and ordinary HTTP absolute-form requests, cap request headers, strip proxy credentials before forwarding, use a bounded handshake, and remain covered by parser/encoder tests.
 - Remote forwarding can expose a local service through the SSH server. Preserve explicit bind-address fields and never silently widen them to `0.0.0.0`.
 - Every user-facing app string must use a stable localization key with matching `en` and `zh-Hans` values. Persisted profile values and SSH arguments must remain language-independent.
 - Ambiguous networking concepts must provide localized contextual help that states the direction, a concrete use case, and any exposure boundary. Help must remain accessible while a running rule locks editable fields.

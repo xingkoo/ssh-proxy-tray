@@ -7,11 +7,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black)](https://www.apple.com/macos/)
 
-SSH Proxy Tray 是一个轻量、原生的 macOS SSH 代理与端口转发工具。它使用 macOS 自带的 OpenSSH，通过独立管理窗口同时运行多个 SOCKS 代理、本地转发和远程转发规则；状态栏图标只负责常驻状态与快速打开。
+SSH Proxy Tray 是一个轻量、原生的 macOS SSH 代理与端口转发工具。它使用 macOS 自带的 OpenSSH，通过独立管理窗口同时运行多个代理、本地转发和远程转发规则；一个代理规则可以用同一条 SSH 隧道同时提供 SOCKS5 与 HTTP/HTTPS 两个本地端点。状态栏图标只负责常驻状态与快速打开。
 
 适合以下场景：
 
-- 临时使用 SSH 主机作为 SOCKS5 代理，不安装专用代理客户端。
+- 临时使用 SSH 主机作为 SOCKS5 或 HTTP/HTTPS 代理，不安装专用代理客户端。
 - 已有系统代理，但某个应用需要独立的代理出口或端口。
 - 把 SSH 服务器可访问的服务映射到本机端口。
 - 通过 SSH 服务器上的远程端口访问本机服务。
@@ -22,6 +22,7 @@ SSH Proxy Tray 是一个轻量、原生的 macOS SSH 代理与端口转发工具
 - 中英文界面，自动跟随 macOS 首选语言。
 - 规则类型、连接状态、转发方向、地址、端口和高级 SSH 参数均提供中英文就地帮助。
 - 多条规则并发运行，每条规则独立启用、连接、断开和记录状态。
+- 一个代理规则、一条 `ssh -D` 连接，同时提供独立可配置的 SOCKS5 与 HTTP/HTTPS 端口。
 - 清晰显示未连接、正在连接、已连接、正在断开和连接失败。
 - 支持 `~/.ssh/config` Host alias 及一键导入具体 Host。
 - 支持私钥、OpenSSH certificate、用户名密码和可选钥匙串保存。
@@ -35,11 +36,19 @@ SSH Proxy Tray 是一个轻量、原生的 macOS SSH 代理与端口转发工具
 
 | 类型 | OpenSSH 参数 | 作用 |
 | --- | --- | --- |
-| SOCKS 代理 | `ssh -D` | 在本机创建 SOCKS5 代理，不要求服务器运行代理服务 |
+| 代理 | `ssh -D` + 本机适配器 | 一条 SSH 隧道提供 SOCKS5 端点，并可选提供 HTTP/HTTPS 端点 |
 | 本地转发 | `ssh -L` | 通过本机端口访问 SSH 服务器可达的远端服务 |
 | 远程转发 | `ssh -R` | 通过 SSH 服务器上的端口访问本机服务 |
 
 所有本地监听只允许绑定 `127.0.0.1` 或 `localhost`。远程转发默认绑定远端 loopback；主动改成 `0.0.0.0` 可能暴露本机服务，并依赖服务器的 `GatewayPorts` 配置。
+
+HTTP 与 SOCKS 是不同协议，不能共用同一个本地端口。启用 HTTP/HTTPS 后会出现第二个本地端口，但它只是本机协议适配器；底层仍只有一条 `ssh -D` 连接：
+
+```text
+SOCKS 应用 -> SOCKS 端口 ───────────────┐
+                                         ├-> 同一条 SSH 隧道 -> 目标网络
+HTTP/HTTPS 应用 -> HTTP 端口 -> 本机适配 ┘
+```
 
 ## 系统要求
 
@@ -73,6 +82,8 @@ swift test
 
 每条规则都可以单独设置端口、启用状态、自动连接，并可手工连接或断开。
 
+代理规则始终提供 SOCKS5 端口；启用“同时提供 HTTP/HTTPS 代理”后，再配置一个 HTTP 端口。顶部复制菜单可以分别复制 `socks5://...` 和 `http://...` 端点。
+
 界面中的问号按钮会结合当前规则类型解释数据流和典型场景。将鼠标停留在地址、端口和高级参数上，可以查看该字段的用途和安全边界。帮助在规则已经连接、配置字段被锁定时仍然可用。
 
 ## CLI 配置
@@ -86,6 +97,7 @@ swift test
   --auth sshConfig \
   --mode socks5 \
   --local-port 18080 \
+  --http-proxy-port 18081 \
   --auto-connect
 ```
 
@@ -115,7 +127,7 @@ swift test
   --remote-port 23000
 ```
 
-## 使用 SOCKS 代理
+## 使用代理
 
 将目标应用的代理地址设置为：
 
@@ -129,12 +141,24 @@ socks5://127.0.0.1:18080
 curl --proxy socks5h://127.0.0.1:18080 https://example.com
 ```
 
+HTTP 代理端点可以同时处理普通 HTTP 请求和 HTTPS CONNECT：
+
+```text
+http://127.0.0.1:18081
+```
+
+```bash
+curl --proxy http://127.0.0.1:18081 http://example.com
+curl --proxy http://127.0.0.1:18081 https://example.com
+```
+
 ## 安全边界
 
 - SSH 参数以数组直接传给 `/usr/bin/ssh`，不经过 shell 拼接。
 - 未保存密码只短暂存在于应用内存，并通过随机令牌保护的 loopback askpass 通道交给 OpenSSH。
 - 保存的密码进入 macOS 钥匙串；profile 文件不保存密码并使用 `0600` 权限。
 - 新主机密钥使用 OpenSSH `accept-new`；已变化的主机密钥仍会被拒绝。
+- HTTP/HTTPS 适配器只监听 loopback，限制请求头和初始握手时间，并在转发前移除代理凭证头。
 - 应用不会自动扩大本地或远程监听地址。
 
 安全问题请参阅 [SECURITY.md](SECURITY.md)。

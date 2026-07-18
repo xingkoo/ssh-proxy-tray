@@ -30,6 +30,12 @@ func integer(_ flag: String, default defaultValue: Int, in arguments: [String]) 
     return result
 }
 
+func optionalInteger(_ flag: String, in arguments: [String]) throws -> Int? {
+    guard let text = value(after: flag, in: arguments) else { return nil }
+    guard let result = Int(text) else { throw CLIError.invalidValue("Invalid integer for \(flag): \(text)") }
+    return result
+}
+
 func upsert(arguments: [String], store: ConfigurationStore) throws {
     let name = try required("--name", in: arguments)
     let sshHost = try required("--ssh-host", in: arguments)
@@ -50,6 +56,11 @@ func upsert(arguments: [String], store: ConfigurationStore) throws {
     profile.certificateFile = value(after: "--certificate-file", in: arguments)
     profile.mode = mode
     profile.localPort = try integer("--local-port", default: 18080, in: arguments)
+    if arguments.contains("--disable-http-proxy") {
+        profile.httpProxyPort = nil
+    } else if let httpProxyPort = try optionalInteger("--http-proxy-port", in: arguments) {
+        profile.httpProxyPort = httpProxyPort
+    }
     profile.remoteHost = value(after: "--remote-host", in: arguments) ?? "127.0.0.1"
     profile.remotePort = try integer("--remote-port", default: 3128, in: arguments)
     profile.autoConnect = arguments.contains("--auto-connect")
@@ -80,7 +91,8 @@ do {
     case "list":
         let configuration = try store.load()
         for profile in configuration.profiles {
-            print("\(profile.name)\t\(profile.authentication.rawValue)\t\(profile.proxyURL)")
+            let endpoints = [profile.proxyURL, profile.httpProxyURL].compactMap { $0 }.joined(separator: "\t")
+            print("\(profile.name)\t\(profile.authentication.rawValue)\t\(endpoints)")
         }
     case "config-path":
         print(store.configurationURL.path)
@@ -95,6 +107,7 @@ do {
           --auth sshConfig|keyFile|password
           --ssh-port PORT --username USER --identity-file PATH --certificate-file PATH
           --mode socks5|localForward|remoteForward --local-port PORT
+          --http-proxy-port PORT --disable-http-proxy
           --remote-host HOST --remote-port PORT --auto-connect
           --proxy-jump HOST --compression --connect-timeout SECONDS
           --server-alive-interval SECONDS --server-alive-count-max COUNT

@@ -4,6 +4,27 @@ import XCTest
 final class ProfileValidationTests: XCTestCase {
     func testDefaultPortAvoidsCommonProxyPorts() {
         XCTAssertEqual(TunnelProfile().localPort, 18080)
+        XCTAssertNil(TunnelProfile().httpProxyPort)
+    }
+
+    func testValidatesOptionalHTTPProxyPort() throws {
+        var profile = TunnelProfile(
+            name: "Dual proxy",
+            sshHost: "example.test",
+            localPort: 18080,
+            httpProxyPort: 18081
+        )
+        XCTAssertNoThrow(try ProfileValidator.validate(profile))
+
+        profile.httpProxyPort = 18080
+        XCTAssertThrowsError(try ProfileValidator.validate(profile)) { error in
+            XCTAssertEqual(error as? ProfileValidationError, .proxyPortsMustDiffer)
+        }
+
+        profile.httpProxyPort = 0
+        XCTAssertThrowsError(try ProfileValidator.validate(profile)) { error in
+            XCTAssertEqual(error as? ProfileValidationError, .invalidHTTPProxyPort)
+        }
     }
 
     func testValidSSHConfigProfile() throws {

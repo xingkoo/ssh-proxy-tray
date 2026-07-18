@@ -137,11 +137,15 @@ final class AppModel: ObservableObject {
     }
 
     func addProfile() {
-        let port = nextAvailableLocalPort(excluding: Set(profiles.map(\.localPort)))
+        var usedPorts = configuredLocalPorts
+        let port = nextAvailableLocalPort(excluding: usedPorts)
+        usedPorts.insert(port)
+        let httpPort = nextAvailableLocalPort(excluding: usedPorts)
         let profile = TunnelProfile(
             isEnabled: true,
             name: SSHProxyL10n.string("profile.new_tunnel", default: "New Tunnel"),
-            localPort: port
+            localPort: port,
+            httpProxyPort: httpPort
         )
         profiles.append(profile)
         selectedProfileID = profile.id
@@ -156,7 +160,12 @@ final class AppModel: ObservableObject {
         if profile.mode == .remoteForward {
             profile.remotePort = min(profile.remotePort + 1, 65535)
         } else {
-            profile.localPort = nextAvailableLocalPort(excluding: Set(profiles.map(\.localPort)))
+            var usedPorts = configuredLocalPorts
+            profile.localPort = nextAvailableLocalPort(excluding: usedPorts)
+            usedPorts.insert(profile.localPort)
+            if profile.mode == .socks5, profile.httpProxyPort != nil {
+                profile.httpProxyPort = nextAvailableLocalPort(excluding: usedPorts)
+            }
         }
         profiles.append(profile)
         selectedProfileID = profile.id
@@ -190,17 +199,20 @@ final class AppModel: ObservableObject {
             return
         }
 
-        var usedPorts = Set(profiles.map(\.localPort))
+        var usedPorts = configuredLocalPorts
         var imported: [TunnelProfile] = []
         for alias in aliases {
             let port = nextAvailableLocalPort(excluding: usedPorts)
             usedPorts.insert(port)
+            let httpPort = nextAvailableLocalPort(excluding: usedPorts)
+            usedPorts.insert(httpPort)
             imported.append(TunnelProfile(
                 isEnabled: true,
                 name: alias,
                 sshHost: alias,
                 authentication: .sshConfig,
-                localPort: port
+                localPort: port,
+                httpProxyPort: httpPort
             ))
         }
         profiles.append(contentsOf: imported)
@@ -221,6 +233,11 @@ final class AppModel: ObservableObject {
             if profile.mode != .remoteForward,
                !LocalPortAvailability.isAvailable(host: profile.localHost, port: profile.localPort) {
                 throw AppModelError.localPortInUse(profile.localPort)
+            }
+            if profile.mode == .socks5,
+               let httpProxyPort = profile.httpProxyPort,
+               !LocalPortAvailability.isAvailable(host: profile.localHost, port: httpProxyPort) {
+                throw AppModelError.localPortInUse(httpProxyPort)
             }
 
             var password: String?
@@ -279,8 +296,12 @@ final class AppModel: ObservableObject {
 
     func copySelectedEndpoint() {
         guard let profile = selectedProfile else { return }
+        copyEndpoint(profile.proxyURL)
+    }
+
+    func copyEndpoint(_ endpoint: String) {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(profile.proxyURL, forType: .string)
+        NSPasteboard.general.setString(endpoint, forType: .string)
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -310,6 +331,16 @@ final class AppModel: ObservableObject {
         (18080...18179).first {
             !usedPorts.contains($0) && LocalPortAvailability.isAvailable(host: "127.0.0.1", port: $0)
         } ?? 18080
+    }
+
+    private var configuredLocalPorts: Set<Int> {
+        Set(profiles.flatMap { profile in
+            var ports = [profile.localPort]
+            if profile.mode == .socks5, let httpProxyPort = profile.httpProxyPort {
+                ports.append(httpProxyPort)
+            }
+            return ports
+        })
     }
 
     private func persistConfiguration() {

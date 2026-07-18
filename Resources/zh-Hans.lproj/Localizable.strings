@@ -2,7 +2,7 @@
 "authentication.key_certificate" = "密钥 / 证书";
 "authentication.password" = "密码";
 
-"mode.socks_proxy" = "SOCKS 代理";
+"mode.proxy" = "代理";
 "mode.local_forward" = "本地转发";
 "mode.remote_forward" = "远程转发";
 
@@ -15,6 +15,8 @@
 "validation.certificate_file_not_found" = "SSH 证书文件不存在。";
 "validation.invalid_local_host" = "本地绑定地址必须是 127.0.0.1 或 localhost。";
 "validation.invalid_local_port" = "本地端口必须在 1 到 65535 之间。";
+"validation.invalid_http_proxy_port" = "HTTP 代理端口必须在 1 到 65535 之间。";
+"validation.proxy_ports_must_differ" = "SOCKS 和 HTTP 代理端口不能相同。";
 "validation.missing_remote_host" = "请输入远程目标地址或绑定地址。";
 "validation.invalid_remote_port" = "远程端口必须在 1 到 65535 之间。";
 "validation.invalid_connect_timeout" = "连接超时必须在 1 到 120 秒之间。";
@@ -32,6 +34,8 @@
 "askpass.timed_out" = "本地密码代理已超时。";
 "runner.ssh_exited" = "ssh 已退出，状态码为 %d。";
 "runner.local_port_did_not_open" = "本地代理端口未能打开。";
+"http_proxy.invalid_port" = "HTTP 代理端口无效。";
+"http_proxy.listener_failed" = "HTTP 代理监听失败：%@";
 
 "profile.new_tunnel" = "新建隧道";
 "profile.copy_suffix" = " 副本";
@@ -57,6 +61,9 @@
 "ui.unnamed_rule" = "未命名规则";
 "ui.enabled" = "启用";
 "ui.copy_endpoint" = "复制端点";
+"ui.copy_proxy_endpoint" = "复制 SOCKS 或 HTTP 端点";
+"ui.copy_socks_endpoint" = "复制 SOCKS 端点";
+"ui.copy_http_endpoint" = "复制 HTTP 端点";
 "ui.disconnect" = "断开";
 "ui.connect" = "连接";
 "ui.section.rule" = "规则";
@@ -83,7 +90,9 @@
 "ui.server_alive_count" = "服务器保活失败次数";
 "ui.section.connection_log" = "连接日志";
 "ui.local_bind_address" = "本地绑定地址";
-"ui.local_proxy_port" = "本地代理端口";
+"ui.socks_proxy_port" = "SOCKS 代理端口";
+"ui.provide_http_proxy" = "同时提供 HTTP/HTTPS 代理";
+"ui.http_proxy_port" = "HTTP 代理端口";
 "ui.local_listen_port" = "本地监听端口";
 "ui.remote_destination_host" = "远程目标主机";
 "ui.remote_destination_port" = "远程目标端口";
@@ -97,7 +106,7 @@
 "help.rule_state.title" = "可用状态与连接状态";
 "help.rule_state.body" = "“启用”表示这条规则允许运行，并不代表它已经连接。使用“连接”和“断开”控制当前 SSH 会话；禁用正在运行的规则会立即断开它。";
 "help.rule_type.title" = "根据访问方向选择规则类型";
-"help.rule_type.body" = "SOCKS 代理让本机应用通过 SSH 主机访问网络；本地转发在这台 Mac 上打开端口，用来访问 SSH 服务器可达的服务；远程转发在 SSH 服务器上打开端口，用来访问这台 Mac 上运行的服务。";
+"help.rule_type.body" = "代理规则提供 SOCKS5 端点，也可以通过同一条 SSH 隧道提供 HTTP/HTTPS 端点；本地转发在这台 Mac 上打开端口，用来访问 SSH 服务器可达的服务；远程转发在 SSH 服务器上打开端口，用来访问这台 Mac 上运行的服务。";
 "help.auto_connect" = "SSH Proxy Tray 启动时自动连接这条规则。“登录时启动”是另一个应用级设置。";
 "help.authentication.title" = "选择 OpenSSH 的认证方式";
 "help.authentication.body" = "如果主机、用户、密钥、跳板机或端口已经写在 ~/.ssh/config 中，推荐使用“SSH 配置”。“密钥 / 证书”使用界面中的显式连接字段。“密码”会在连接时读取，只有启用钥匙串保存后才会持久保存。";
@@ -110,6 +119,8 @@
 "help.server_alive_count" = "连续多少次保活消息未响应后断开连接。";
 "help.local_bind_address" = "接受连接的本地接口。使用 loopback 可确保端口只能由这台 Mac 访问。";
 "help.local_proxy_port" = "在浏览器或应用的 SOCKS5 代理设置中填写这个本地端口。";
+"help.provide_http_proxy" = "增加一个使用同一条 SSH 隧道的本地 HTTP 代理端点；HTTPS 通过 HTTP CONNECT 方法提供。";
+"help.http_proxy_port" = "在支持 HTTP 代理的应用中填写这个端口。普通 HTTP 请求和 HTTPS CONNECT 都会使用与 SOCKS 相同的 SSH 隧道。";
 "help.local_listen_port" = "连接这台 Mac 上的这个端口，即可通过 SSH 访问远程目标。";
 "help.remote_destination_host" = "SSH 服务器能够访问的主机；127.0.0.1 表示 SSH 服务器本身。";
 "help.remote_destination_port" = "从 SSH 服务器一侧访问的目标服务端口。";
@@ -117,11 +128,11 @@
 "help.remote_listen_port" = "连接 SSH 服务器上的这个端口，即可访问本地目标服务。";
 "help.local_target_host" = "从这台 Mac 看到的目标服务地址，通常使用 127.0.0.1。";
 "help.local_target_port" = "目标服务已经在这台 Mac 上监听的端口。";
-"help.mode.socks" = "本机应用 -> 本地 SOCKS 端口 -> SSH 主机 -> 目标网络。适合作为轻量的应用级代理。";
+"help.mode.proxy" = "本机应用 -> SOCKS 或 HTTP 代理端口 -> 一条 SSH 隧道 -> 目标网络。使用任一端点都不会再建立第二条 SSH 连接。";
 "help.mode.local_forward" = "这台 Mac 的本地端口 -> SSH 隧道 -> SSH 服务器可达的服务。";
 "help.mode.remote_forward" = "SSH 服务器的远程端口 -> SSH 隧道 -> 这台 Mac 上运行的服务。";
-"help.forwarding.socks.title" = "SOCKS 代理：本机应用通过 SSH 主机访问网络";
-"help.forwarding.socks.body" = "流向：浏览器或应用 -> 本地 SOCKS5 端口 -> 加密 SSH 连接 -> 目标网络。在应用的 SOCKS5 代理设置中填写界面显示的本地地址和端口。";
+"help.forwarding.proxy.title" = "代理：SOCKS 与 HTTP 端点共享一条 SSH 隧道";
+"help.forwarding.proxy.body" = "SOCKS 流向：应用 -> 本地 SOCKS5 端口 -> 加密 SSH 隧道 -> 目标网络。HTTP 流向：应用 -> 本地 HTTP 代理端口 -> 本机协议适配 -> 同一个 SOCKS5 隧道；HTTPS 使用 HTTP CONNECT。SOCKS 和 HTTP 是不同协议，因此需要两个本地端口，但只会建立一条 SSH 连接。";
 "help.forwarding.local.title" = "本地转发：从这台 Mac 访问远端一侧的服务";
 "help.forwarding.local.body" = "流向：这台 Mac 的本地监听端口 -> 加密 SSH 连接 -> SSH 服务器可达的目标主机和端口。例如，可以用本地 8080 访问远端一侧的代理或数据库。";
 "help.forwarding.remote.title" = "远程转发：从 SSH 服务器访问这台 Mac 上的服务";

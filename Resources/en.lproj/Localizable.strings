@@ -2,7 +2,7 @@
 "authentication.key_certificate" = "Key / Certificate";
 "authentication.password" = "Password";
 
-"mode.socks_proxy" = "SOCKS Proxy";
+"mode.proxy" = "Proxy";
 "mode.local_forward" = "Local Forward";
 "mode.remote_forward" = "Remote Forward";
 
@@ -15,6 +15,8 @@
 "validation.certificate_file_not_found" = "The SSH certificate file does not exist.";
 "validation.invalid_local_host" = "Local bind host must be 127.0.0.1 or localhost.";
 "validation.invalid_local_port" = "Local port must be between 1 and 65535.";
+"validation.invalid_http_proxy_port" = "HTTP proxy port must be between 1 and 65535.";
+"validation.proxy_ports_must_differ" = "SOCKS and HTTP proxy ports must be different.";
 "validation.missing_remote_host" = "Enter the remote destination or bind host.";
 "validation.invalid_remote_port" = "Remote port must be between 1 and 65535.";
 "validation.invalid_connect_timeout" = "Connect timeout must be between 1 and 120 seconds.";
@@ -32,6 +34,8 @@
 "askpass.timed_out" = "The local password broker timed out.";
 "runner.ssh_exited" = "ssh exited with status %d.";
 "runner.local_port_did_not_open" = "Local proxy port did not open.";
+"http_proxy.invalid_port" = "The HTTP proxy port is invalid.";
+"http_proxy.listener_failed" = "The HTTP proxy listener failed: %@";
 
 "profile.new_tunnel" = "New Tunnel";
 "profile.copy_suffix" = " Copy";
@@ -57,6 +61,9 @@
 "ui.unnamed_rule" = "Unnamed Rule";
 "ui.enabled" = "Enabled";
 "ui.copy_endpoint" = "Copy endpoint";
+"ui.copy_proxy_endpoint" = "Copy SOCKS or HTTP endpoint";
+"ui.copy_socks_endpoint" = "Copy SOCKS endpoint";
+"ui.copy_http_endpoint" = "Copy HTTP endpoint";
 "ui.disconnect" = "Disconnect";
 "ui.connect" = "Connect";
 "ui.section.rule" = "Rule";
@@ -83,7 +90,9 @@
 "ui.server_alive_count" = "Server alive count";
 "ui.section.connection_log" = "Connection Log";
 "ui.local_bind_address" = "Local bind address";
-"ui.local_proxy_port" = "Local proxy port";
+"ui.socks_proxy_port" = "SOCKS proxy port";
+"ui.provide_http_proxy" = "Also provide HTTP/HTTPS proxy";
+"ui.http_proxy_port" = "HTTP proxy port";
 "ui.local_listen_port" = "Local listen port";
 "ui.remote_destination_host" = "Remote destination host";
 "ui.remote_destination_port" = "Remote destination port";
@@ -97,7 +106,7 @@
 "help.rule_state.title" = "Availability and connection state";
 "help.rule_state.body" = "Enabled means the rule is available to run; it does not mean the rule is connected. Use Connect and Disconnect to control the current SSH session. Disabling a running rule disconnects it.";
 "help.rule_type.title" = "Choose the direction that matches your task";
-"help.rule_type.body" = "SOCKS Proxy gives local apps a proxy through the SSH host. Local Forward opens a port on this Mac for a service reachable from the SSH server. Remote Forward opens a port on the SSH server for a service running on this Mac.";
+"help.rule_type.body" = "Proxy provides a SOCKS5 endpoint and can also provide an HTTP/HTTPS endpoint through the same SSH tunnel. Local Forward opens a port on this Mac for a service reachable from the SSH server. Remote Forward opens a port on the SSH server for a service running on this Mac.";
 "help.auto_connect" = "Connects this rule when SSH Proxy Tray starts. Launch at login is a separate app-wide setting.";
 "help.authentication.title" = "Choose how OpenSSH authenticates";
 "help.authentication.body" = "SSH Config is best when the host, user, key, jump host, or port already exists in ~/.ssh/config. Key / Certificate uses explicit connection fields. Password prompts at connection time and is saved only when Keychain storage is enabled.";
@@ -110,6 +119,8 @@
 "help.server_alive_count" = "Disconnect after this many unanswered keepalive messages.";
 "help.local_bind_address" = "The local interface that accepts connections. Loopback keeps the listener available only on this Mac.";
 "help.local_proxy_port" = "Configure your browser or application to use this local SOCKS5 port.";
+"help.provide_http_proxy" = "Adds a local HTTP proxy endpoint that uses the same SSH tunnel. HTTPS is supported through the HTTP CONNECT method.";
+"help.http_proxy_port" = "Use this port in applications that accept an HTTP proxy. Both HTTP requests and HTTPS CONNECT use the same SSH tunnel as SOCKS.";
 "help.local_listen_port" = "Connect to this port on your Mac to reach the remote destination through SSH.";
 "help.remote_destination_host" = "A host that the SSH server can reach. 127.0.0.1 means the SSH server itself.";
 "help.remote_destination_port" = "The service port reached from the SSH server side.";
@@ -117,11 +128,11 @@
 "help.remote_listen_port" = "Connect to this port on the SSH server to reach the local target.";
 "help.local_target_host" = "The service host as seen from this Mac. Usually 127.0.0.1.";
 "help.local_target_port" = "The port where the target service is already running on this Mac.";
-"help.mode.socks" = "Local app -> local SOCKS port -> SSH host -> network. Use it as a lightweight per-app proxy.";
+"help.mode.proxy" = "Local app -> SOCKS or HTTP proxy port -> one SSH tunnel -> network. Use either endpoint without opening a second SSH connection.";
 "help.mode.local_forward" = "This Mac local port -> SSH tunnel -> service reachable from the SSH server.";
 "help.mode.remote_forward" = "SSH server remote port -> SSH tunnel -> service running on this Mac.";
-"help.forwarding.socks.title" = "SOCKS Proxy: local applications use the SSH host as a proxy";
-"help.forwarding.socks.body" = "Flow: your browser or app -> local SOCKS5 port -> encrypted SSH connection -> destination network. Use the displayed local host and port in the application's SOCKS5 proxy settings.";
+"help.forwarding.proxy.title" = "Proxy: SOCKS and HTTP endpoints share one SSH tunnel";
+"help.forwarding.proxy.body" = "SOCKS flow: app -> local SOCKS5 port -> encrypted SSH tunnel -> destination. HTTP flow: app -> local HTTP proxy port -> local protocol adapter -> the same SOCKS5 tunnel. HTTPS uses HTTP CONNECT. Two local ports are required because SOCKS and HTTP are different protocols, but only one SSH connection is opened.";
 "help.forwarding.local.title" = "Local Forward: access a remote-side service from this Mac";
 "help.forwarding.local.body" = "Flow: this Mac's local listen port -> encrypted SSH connection -> destination host and port reachable from the SSH server. Example: local 8080 can reach a proxy or database on the remote side.";
 "help.forwarding.remote.title" = "Remote Forward: access a service on this Mac from the SSH server";

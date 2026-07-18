@@ -46,12 +46,15 @@ final class TunnelRunner {
     private var process: Process?
     private var errorPipe: Pipe?
     private var askPassBroker: AskPassBroker?
+    private var httpProxyServer: LocalHTTPProxyServer?
     private var logs: [String] = []
     private var stopping = false
+    private var terminalFailureMessage: String?
 
     func connect(profile: TunnelProfile, password: String?, askPassPath: String) throws {
         disconnect()
         stopping = false
+        terminalFailureMessage = nil
         logs = []
         update(.connecting)
 
@@ -129,9 +132,15 @@ final class TunnelRunner {
     private func handleTermination(process: Process, status: Int32) {
         guard self.process === process else { return }
         let wasStopping = stopping
+        let terminalFailureMessage = terminalFailureMessage
+        self.terminalFailureMessage = nil
         cleanup()
         if wasStopping {
             update(.disconnected)
+            return
+        }
+        if let terminalFailureMessage {
+            update(.failed(terminalFailureMessage))
             return
         }
         let detail = logs.last(where: { !$0.isEmpty }) ?? SSHProxyL10n.format(
@@ -147,30 +156,70 @@ final class TunnelRunner {
         probe(host: profile.localHost, port: profile.localPort) { [weak self, weak process] isOpen in
             guard let self, let process, self.process === process else { return }
             if isOpen {
-                self.askPassBroker?.stop()
-                self.askPassBroker = nil
-                self.update(.connected)
+                self.startHTTPProxyIfNeeded(profile: profile, process: process)
             } else if attempt < 24, process.isRunning {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     self.waitForLocalPort(profile: profile, process: process, attempt: attempt + 1)
                 }
             } else if process.isRunning {
-                process.terminate()
-                self.update(.failed(SSHProxyL10n.string(
+                self.failAndTerminate(SSHProxyL10n.string(
                     "runner.local_port_did_not_open",
                     default: "Local proxy port did not open."
-                )))
+                ), process: process)
             }
         }
+    }
+
+    private func startHTTPProxyIfNeeded(profile: TunnelProfile, process: Process) {
+        guard profile.mode == .socks5, let httpProxyPort = profile.httpProxyPort else {
+            finishConnecting()
+            return
+        }
+
+        let server = LocalHTTPProxyServer()
+        httpProxyServer = server
+        do {
+            try server.start(
+                listenHost: profile.localHost,
+                listenPort: httpProxyPort,
+                socksHost: profile.localHost,
+                socksPort: profile.localPort,
+                onReady: { [weak self, weak process] in
+                    guard let self, let process,
+                          self.process === process,
+                          process.isRunning else { return }
+                    self.finishConnecting()
+                },
+                onFailure: { [weak self, weak process] error in
+                    guard let self, let process,
+                          self.process === process else { return }
+                    self.failAndTerminate(error.localizedDescription, process: process)
+                }
+            )
+        } catch {
+            failAndTerminate(error.localizedDescription, process: process)
+        }
+    }
+
+    private func finishConnecting() {
+        askPassBroker?.stop()
+        askPassBroker = nil
+        update(.connected)
+    }
+
+    private func failAndTerminate(_ message: String, process: Process) {
+        terminalFailureMessage = message
+        httpProxyServer?.stop()
+        httpProxyServer = nil
+        if process.isRunning { process.terminate() }
+        update(.failed(message))
     }
 
     private func waitForRemoteForward(process: Process) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self, weak process] in
             guard let self, let process, self.process === process else { return }
             if process.isRunning {
-                self.askPassBroker?.stop()
-                self.askPassBroker = nil
-                self.update(.connected)
+                self.finishConnecting()
             }
         }
     }
@@ -231,6 +280,8 @@ final class TunnelRunner {
         errorPipe = nil
         askPassBroker?.stop()
         askPassBroker = nil
+        httpProxyServer?.stop()
+        httpProxyServer = nil
         if clearProcess { process = nil }
     }
 }

@@ -122,11 +122,7 @@ private struct RuleRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(profile.name.isEmpty ? ui("ui.unnamed_rule", "Unnamed Rule") : profile.name)
                     .lineLimit(1)
-                Text("\(profile.mode.displayName)  \(profile.endpointSummary)")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                endpointRows
             }
 
             Spacer(minLength: 4)
@@ -142,6 +138,26 @@ private struct RuleRow: View {
             }
         }
         .padding(.vertical, 3)
+    }
+
+    @ViewBuilder
+    private var endpointRows: some View {
+        if profile.mode == .socks5 {
+            endpointText("SOCKS  \(profile.localHost):\(profile.localPort)")
+            if let httpProxyPort = profile.httpProxyPort {
+                endpointText("HTTP   \(profile.localHost):\(httpProxyPort)")
+            }
+        } else {
+            endpointText("\(profile.mode.displayName)  \(profile.endpointSummary)")
+        }
+    }
+
+    private func endpointText(_ value: String) -> some View {
+        Text(value)
+            .font(.system(.caption, design: .monospaced))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
     }
 
     private var modeSymbol: String {
@@ -204,12 +220,7 @@ private struct RuleDetailView: View {
                     )
                 )
 
-                Button {
-                    model.copySelectedEndpoint()
-                } label: {
-                    Image(systemName: "doc.on.doc")
-                }
-                .help(ui("ui.copy_endpoint", "Copy endpoint"))
+                endpointCopyControl
 
                 if running {
                     Button(role: .destructive) {
@@ -263,7 +274,7 @@ private struct RuleDetailView: View {
                         helpTitle: ui("help.rule_type.title", "Choose the direction that matches your task"),
                         helpMessage: ui(
                             "help.rule_type.body",
-                            "SOCKS Proxy gives local apps a proxy through the SSH host. Local Forward opens a port on this Mac for a service reachable from the SSH server. Remote Forward opens a port on the SSH server for a service running on this Mac."
+                            "Proxy provides a SOCKS5 endpoint and can also provide an HTTP/HTTPS endpoint through the same SSH tunnel. Local Forward opens a port on this Mac for a service reachable from the SSH server. Remote Forward opens a port on the SSH server for a service running on this Mac."
                         )
                     )
                 }
@@ -400,11 +411,30 @@ private struct RuleDetailView: View {
             TextField(ui("ui.local_bind_address", "Local bind address"), text: $profile.localHost)
                 .help(ui("help.local_bind_address", "The local interface that accepts connections. Loopback keeps the listener available only on this Mac."))
             TextField(
-                ui("ui.local_proxy_port", "Local proxy port"),
+                ui("ui.socks_proxy_port", "SOCKS proxy port"),
                 value: $profile.localPort,
                 format: .number
             )
             .help(ui("help.local_proxy_port", "Configure your browser or application to use this local SOCKS5 port."))
+            Toggle(
+                ui("ui.provide_http_proxy", "Also provide HTTP/HTTPS proxy"),
+                isOn: httpProxyEnabledBinding
+            )
+            .help(ui(
+                "help.provide_http_proxy",
+                "Adds a local HTTP proxy endpoint that uses the same SSH tunnel. HTTPS is supported through the HTTP CONNECT method."
+            ))
+            if profile.httpProxyPort != nil {
+                TextField(
+                    ui("ui.http_proxy_port", "HTTP proxy port"),
+                    value: optionalIntBinding(\.httpProxyPort, default: suggestedHTTPProxyPort),
+                    format: .number
+                )
+                .help(ui(
+                    "help.http_proxy_port",
+                    "Use this port in applications that accept an HTTP proxy. Both HTTP requests and HTTPS CONNECT use the same SSH tunnel as SOCKS."
+                ))
+            }
         case .localForward:
             TextField(ui("ui.local_bind_address", "Local bind address"), text: $profile.localHost)
                 .help(ui("help.local_bind_address", "The local interface that accepts connections. Loopback keeps the listener available only on this Mac."))
@@ -448,7 +478,7 @@ private struct RuleDetailView: View {
     private func modeHelp(_ mode: TunnelMode) -> String {
         switch mode {
         case .socks5:
-            return ui("help.mode.socks", "Local app -> local SOCKS port -> SSH host -> network. Use it as a lightweight per-app proxy.")
+            return ui("help.mode.proxy", "Local app -> SOCKS or HTTP proxy port -> one SSH tunnel -> network. Use either endpoint without opening a second SSH connection.")
         case .localForward:
             return ui("help.mode.local_forward", "This Mac local port -> SSH tunnel -> service reachable from the SSH server.")
         case .remoteForward:
@@ -459,7 +489,7 @@ private struct RuleDetailView: View {
     private var forwardingHelpTitle: String {
         switch profile.mode {
         case .socks5:
-            return ui("help.forwarding.socks.title", "SOCKS Proxy: local applications use the SSH host as a proxy")
+            return ui("help.forwarding.proxy.title", "Proxy: SOCKS and HTTP endpoints share one SSH tunnel")
         case .localForward:
             return ui("help.forwarding.local.title", "Local Forward: access a remote-side service from this Mac")
         case .remoteForward:
@@ -471,8 +501,8 @@ private struct RuleDetailView: View {
         switch profile.mode {
         case .socks5:
             return ui(
-                "help.forwarding.socks.body",
-                "Flow: your browser or app -> local SOCKS5 port -> encrypted SSH connection -> destination network. Use the displayed local host and port in the application's SOCKS5 proxy settings."
+                "help.forwarding.proxy.body",
+                "SOCKS flow: app -> local SOCKS5 port -> encrypted SSH tunnel -> destination. HTTP flow: app -> local HTTP proxy port -> local protocol adapter -> the same SOCKS5 tunnel. HTTPS uses HTTP CONNECT. Two local ports are required because SOCKS and HTTP are different protocols, but only one SSH connection is opened."
             )
         case .localForward:
             return ui(
@@ -485,6 +515,57 @@ private struct RuleDetailView: View {
                 "Flow: remote listen port on the SSH server -> encrypted SSH connection -> target service on this Mac. Example: remote 23000 can reach a local development server on port 3000. Keep the remote bind address at 127.0.0.1 unless broader exposure is intentional and secured."
             )
         }
+    }
+
+    @ViewBuilder
+    private var endpointCopyControl: some View {
+        if profile.mode == .socks5, let httpProxyURL = profile.httpProxyURL {
+            Menu {
+                Button {
+                    model.copyEndpoint(profile.socksProxyURL)
+                } label: {
+                    Label(
+                        ui("ui.copy_socks_endpoint", "Copy SOCKS endpoint"),
+                        systemImage: "network"
+                    )
+                }
+                Button {
+                    model.copyEndpoint(httpProxyURL)
+                } label: {
+                    Label(
+                        ui("ui.copy_http_endpoint", "Copy HTTP endpoint"),
+                        systemImage: "globe"
+                    )
+                }
+            } label: {
+                Image(systemName: "doc.on.doc")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .help(ui("ui.copy_proxy_endpoint", "Copy SOCKS or HTTP endpoint"))
+        } else {
+            Button {
+                model.copySelectedEndpoint()
+            } label: {
+                Image(systemName: "doc.on.doc")
+            }
+            .help(ui("ui.copy_endpoint", "Copy endpoint"))
+        }
+    }
+
+    private var httpProxyEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { profile.httpProxyPort != nil },
+            set: { enabled in
+                profile.httpProxyPort = enabled
+                    ? (profile.httpProxyPort ?? suggestedHTTPProxyPort)
+                    : nil
+            }
+        )
+    }
+
+    private var suggestedHTTPProxyPort: Int {
+        profile.localPort < 65535 ? profile.localPort + 1 : 18081
     }
 
     private var enabledBinding: Binding<Bool> {

@@ -7,7 +7,12 @@ final class ConfigurationStoreTests: XCTestCase {
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = ConfigurationStore(baseDirectory: directory)
-        let profile = TunnelProfile(name: "Qiniu", sshHost: "qiniu", localPort: 17890)
+        let profile = TunnelProfile(
+            name: "Qiniu",
+            sshHost: "qiniu",
+            localPort: 17890,
+            httpProxyPort: 17891
+        )
         let expected = AppConfiguration(selectedProfileID: profile.id, profiles: [profile])
 
         try store.save(expected)
@@ -21,5 +26,13 @@ final class ConfigurationStoreTests: XCTestCase {
     func testDecodesLegacyRemoteProxyMode() throws {
         let data = Data("\"remoteProxy\"".utf8)
         XCTAssertEqual(try JSONDecoder().decode(TunnelMode.self, from: data), .localForward)
+    }
+
+    func testHTTPProxyURLIsOnlyExposedForProxyRules() {
+        var profile = TunnelProfile(mode: .socks5, httpProxyPort: 18081)
+        XCTAssertEqual(profile.httpProxyURL, "http://127.0.0.1:18081")
+
+        profile.mode = .localForward
+        XCTAssertNil(profile.httpProxyURL)
     }
 }
