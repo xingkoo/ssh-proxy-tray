@@ -20,6 +20,7 @@ Typical uses include:
 
 - Native SwiftUI macOS app with no third-party runtime dependencies.
 - English and Simplified Chinese UI, following the preferred macOS language.
+- Bilingual contextual help for rule types, connection state, forwarding direction, addresses, ports, and advanced SSH options.
 - Multiple concurrent rules with independent enabled and runtime states.
 - Clear Disconnected, Connecting, Connected, Disconnecting, and Failed states.
 - `~/.ssh/config` aliases and import of concrete Host entries.
@@ -71,6 +72,8 @@ Click the status icon to open the dedicated management window, add a rule, and c
 - **Password** asks at connection time and is persisted only when **Save password in Keychain** is enabled.
 
 Each rule has its own port, enabled state, auto-connect setting, and manual Connect or Disconnect action.
+
+Question-mark buttons explain the selected rule's data flow and typical use case. Hover over address, port, and advanced SSH fields for field-specific purpose and security guidance. Help remains available while a connected rule locks its editable fields.
 
 ## Configure from the CLI
 

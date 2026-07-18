@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
 
+## 0.4.0 - 2026-07-18
+
+- Add bilingual contextual help for availability versus connection state, rule types, authentication, forwarding, and advanced SSH options.
+- Explain SOCKS, local-forward, and remote-forward data flow with concrete use cases and direction-specific examples.
+- Add field-level tooltips for bind addresses, listen ports, destination/target fields, ProxyJump, compression, timeout, and keepalive values.
+- Keep help buttons available while connected rules lock their editable fields.
+
 ## 0.3.0 - 2026-07-18
 
 - Add complete English and Simplified Chinese app localization that follows the preferred macOS language.

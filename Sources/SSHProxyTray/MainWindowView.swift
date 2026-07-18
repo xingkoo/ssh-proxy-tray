@@ -73,6 +73,10 @@ struct MainWindowView: View {
                     )
                     .toggleStyle(.switch)
                     .controlSize(.small)
+                    .help(ui(
+                        "help.launch_at_login",
+                        "Starts the app after login. Only rules with auto-connect enabled will connect automatically."
+                    ))
 
                     Spacer()
 
@@ -192,6 +196,14 @@ private struct RuleDetailView: View {
                     .toggleStyle(.switch)
                     .controlSize(.small)
 
+                ContextHelpButton(
+                    title: ui("help.rule_state.title", "Availability and connection state"),
+                    message: ui(
+                        "help.rule_state.body",
+                        "Enabled means the rule is available to run; it does not mean the rule is connected. Use Connect and Disconnect to control the current SSH session. Disabling a running rule disconnects it."
+                    )
+                )
+
                 Button {
                     model.copySelectedEndpoint()
                 } label: {
@@ -222,87 +234,141 @@ private struct RuleDetailView: View {
             Divider()
 
             Form {
-                Section(ui("ui.section.rule", "Rule")) {
-                    TextField(ui("ui.name", "Name"), text: $profile.name)
+                Section {
+                    Group {
+                        TextField(ui("ui.name", "Name"), text: $profile.name)
 
-                    Picker(ui("ui.type", "Type"), selection: $profile.mode) {
-                        ForEach(TunnelMode.allCases, id: \.self) { mode in
-                            Text(mode.displayName).tag(mode)
+                        Picker(ui("ui.type", "Type"), selection: $profile.mode) {
+                            ForEach(TunnelMode.allCases, id: \.self) { mode in
+                                Text(mode.displayName)
+                                    .tag(mode)
+                                    .help(modeHelp(mode))
+                            }
                         }
-                    }
-                    .pickerStyle(.segmented)
+                        .pickerStyle(.segmented)
 
-                    Toggle(
-                        ui("ui.connect_on_start", "Connect when the app starts"),
-                        isOn: $profile.autoConnect
-                    )
-                }
-
-                Section(ui("ui.section.forwarding", "Forwarding")) {
-                    forwardingFields
-                }
-
-                Section(ui("ui.section.ssh_connection", "SSH Connection")) {
-                    Picker(ui("ui.authentication", "Authentication"), selection: $profile.authentication) {
-                        ForEach(AuthenticationMethod.allCases, id: \.self) { method in
-                            Text(method.displayName).tag(method)
-                        }
-                    }
-
-                    TextField(
-                        profile.authentication == .sshConfig
-                            ? ui("ui.host_alias", "Host alias")
-                            : ui("ui.host", "Host"),
-                        text: $profile.sshHost
-                    )
-
-                    if profile.authentication != .sshConfig {
-                        TextField(ui("ui.ssh_port", "SSH port"), value: $profile.sshPort, format: .number)
-                        TextField(ui("ui.username", "Username"), text: $profile.username)
-                    }
-
-                    if profile.authentication == .keyFile {
-                        fileField(
-                            title: ui("ui.private_key", "Private key"),
-                            value: $profile.identityFile,
-                            panelTitle: ui("ui.choose_private_key", "Choose SSH Private Key")
-                        )
-                        fileField(
-                            title: ui("ui.ssh_certificate", "SSH certificate"),
-                            value: optionalStringBinding(\.certificateFile),
-                            panelTitle: ui("ui.choose_ssh_certificate", "Choose SSH Certificate")
-                        )
-                    }
-
-                    if profile.authentication == .password {
-                        SecureField(ui("ui.password", "Password"), text: $password)
                         Toggle(
-                            ui("ui.save_password_keychain", "Save password in Keychain"),
-                            isOn: $profile.savePassword
+                            ui("ui.connect_on_start", "Connect when the app starts"),
+                            isOn: $profile.autoConnect
                         )
+                        .help(ui(
+                            "help.auto_connect",
+                            "Connects this rule when SSH Proxy Tray starts. Launch at login is a separate app-wide setting."
+                        ))
                     }
+                    .disabled(running)
+                } header: {
+                    HelpSectionHeader(
+                        title: ui("ui.section.rule", "Rule"),
+                        helpTitle: ui("help.rule_type.title", "Choose the direction that matches your task"),
+                        helpMessage: ui(
+                            "help.rule_type.body",
+                            "SOCKS Proxy gives local apps a proxy through the SSH host. Local Forward opens a port on this Mac for a service reachable from the SSH server. Remote Forward opens a port on the SSH server for a service running on this Mac."
+                        )
+                    )
                 }
 
-                Section(ui("ui.section.advanced_ssh", "Advanced SSH")) {
-                    TextField("ProxyJump", text: optionalStringBinding(\.proxyJump))
-                    Toggle(
-                        ui("ui.compression", "Compression"),
-                        isOn: optionalBoolBinding(\.compression, default: false)
+                Section {
+                    Group { forwardingFields }
+                        .disabled(running)
+                } header: {
+                    HelpSectionHeader(
+                        title: ui("ui.section.forwarding", "Forwarding"),
+                        helpTitle: forwardingHelpTitle,
+                        helpMessage: forwardingHelpMessage
                     )
-                    TextField(
-                        ui("ui.connect_timeout", "Connect timeout (seconds)"),
-                        value: optionalIntBinding(\.connectTimeout, default: 10),
-                        format: .number
+                }
+
+                Section {
+                    Group {
+                        Picker(ui("ui.authentication", "Authentication"), selection: $profile.authentication) {
+                            ForEach(AuthenticationMethod.allCases, id: \.self) { method in
+                                Text(method.displayName).tag(method)
+                            }
+                        }
+
+                        TextField(
+                            profile.authentication == .sshConfig
+                                ? ui("ui.host_alias", "Host alias")
+                                : ui("ui.host", "Host"),
+                            text: $profile.sshHost
+                        )
+
+                        if profile.authentication != .sshConfig {
+                            TextField(ui("ui.ssh_port", "SSH port"), value: $profile.sshPort, format: .number)
+                            TextField(ui("ui.username", "Username"), text: $profile.username)
+                        }
+
+                        if profile.authentication == .keyFile {
+                            fileField(
+                                title: ui("ui.private_key", "Private key"),
+                                value: $profile.identityFile,
+                                panelTitle: ui("ui.choose_private_key", "Choose SSH Private Key")
+                            )
+                            fileField(
+                                title: ui("ui.ssh_certificate", "SSH certificate"),
+                                value: optionalStringBinding(\.certificateFile),
+                                panelTitle: ui("ui.choose_ssh_certificate", "Choose SSH Certificate")
+                            )
+                        }
+
+                        if profile.authentication == .password {
+                            SecureField(ui("ui.password", "Password"), text: $password)
+                            Toggle(
+                                ui("ui.save_password_keychain", "Save password in Keychain"),
+                                isOn: $profile.savePassword
+                            )
+                        }
+                    }
+                    .disabled(running)
+                } header: {
+                    HelpSectionHeader(
+                        title: ui("ui.section.ssh_connection", "SSH Connection"),
+                        helpTitle: ui("help.authentication.title", "Choose how OpenSSH authenticates"),
+                        helpMessage: ui(
+                            "help.authentication.body",
+                            "SSH Config is best when the host, user, key, jump host, or port already exists in ~/.ssh/config. Key / Certificate uses explicit connection fields. Password prompts at connection time and is saved only when Keychain storage is enabled."
+                        )
                     )
-                    TextField(
-                        ui("ui.server_alive_interval", "Server alive interval (seconds)"),
-                        value: optionalIntBinding(\.serverAliveInterval, default: 30),
-                        format: .number
-                    )
-                    TextField(
-                        ui("ui.server_alive_count", "Server alive count"),
-                        value: optionalIntBinding(\.serverAliveCountMax, default: 3),
-                        format: .number
+                }
+
+                Section {
+                    Group {
+                        TextField("ProxyJump", text: optionalStringBinding(\.proxyJump))
+                            .help(ui("help.proxy_jump", "Connect through an intermediate SSH host, equivalent to ssh -J."))
+                        Toggle(
+                            ui("ui.compression", "Compression"),
+                            isOn: optionalBoolBinding(\.compression, default: false)
+                        )
+                        .help(ui("help.compression", "Enables SSH compression. It can help on slow links but may add CPU overhead."))
+                        TextField(
+                            ui("ui.connect_timeout", "Connect timeout (seconds)"),
+                            value: optionalIntBinding(\.connectTimeout, default: 10),
+                            format: .number
+                        )
+                        .help(ui("help.connect_timeout", "Maximum time to wait while establishing the SSH connection."))
+                        TextField(
+                            ui("ui.server_alive_interval", "Server alive interval (seconds)"),
+                            value: optionalIntBinding(\.serverAliveInterval, default: 30),
+                            format: .number
+                        )
+                        .help(ui("help.server_alive_interval", "How often SSH sends an encrypted keepalive message. Use 0 to disable."))
+                        TextField(
+                            ui("ui.server_alive_count", "Server alive count"),
+                            value: optionalIntBinding(\.serverAliveCountMax, default: 3),
+                            format: .number
+                        )
+                        .help(ui("help.server_alive_count", "Disconnect after this many unanswered keepalive messages."))
+                    }
+                    .disabled(running)
+                } header: {
+                    HelpSectionHeader(
+                        title: ui("ui.section.advanced_ssh", "Advanced SSH"),
+                        helpTitle: ui("help.advanced.title", "Optional OpenSSH connection controls"),
+                        helpMessage: ui(
+                            "help.advanced.body",
+                            "ProxyJump routes through a bastion host. Compression trades CPU for less network traffic. Timeout and keepalive settings control how quickly failed or stalled connections are detected. Leave the defaults unless your SSH environment requires different values."
+                        )
                     )
                 }
 
@@ -324,7 +390,6 @@ private struct RuleDetailView: View {
                 }
             }
             .formStyle(.grouped)
-            .disabled(running)
         }
     }
 
@@ -333,39 +398,91 @@ private struct RuleDetailView: View {
         switch profile.mode {
         case .socks5:
             TextField(ui("ui.local_bind_address", "Local bind address"), text: $profile.localHost)
+                .help(ui("help.local_bind_address", "The local interface that accepts connections. Loopback keeps the listener available only on this Mac."))
             TextField(
                 ui("ui.local_proxy_port", "Local proxy port"),
                 value: $profile.localPort,
                 format: .number
             )
+            .help(ui("help.local_proxy_port", "Configure your browser or application to use this local SOCKS5 port."))
         case .localForward:
             TextField(ui("ui.local_bind_address", "Local bind address"), text: $profile.localHost)
+                .help(ui("help.local_bind_address", "The local interface that accepts connections. Loopback keeps the listener available only on this Mac."))
             TextField(
                 ui("ui.local_listen_port", "Local listen port"),
                 value: $profile.localPort,
                 format: .number
             )
+            .help(ui("help.local_listen_port", "Connect to this port on your Mac to reach the remote destination through SSH."))
             TextField(
                 ui("ui.remote_destination_host", "Remote destination host"),
                 text: $profile.remoteHost
             )
+            .help(ui("help.remote_destination_host", "A host that the SSH server can reach. 127.0.0.1 means the SSH server itself."))
             TextField(
                 ui("ui.remote_destination_port", "Remote destination port"),
                 value: $profile.remotePort,
                 format: .number
             )
+            .help(ui("help.remote_destination_port", "The service port reached from the SSH server side."))
         case .remoteForward:
             TextField(ui("ui.remote_bind_address", "Remote bind address"), text: $profile.remoteHost)
+                .help(ui("help.remote_bind_address", "127.0.0.1 allows access only from the SSH server. 0.0.0.0 may expose the port to other machines and requires GatewayPorts."))
             TextField(
                 ui("ui.remote_listen_port", "Remote listen port"),
                 value: $profile.remotePort,
                 format: .number
             )
+            .help(ui("help.remote_listen_port", "Connect to this port on the SSH server to reach the local target."))
             TextField(ui("ui.local_target_host", "Local target host"), text: $profile.localHost)
+                .help(ui("help.local_target_host", "The service host as seen from this Mac. Usually 127.0.0.1."))
             TextField(
                 ui("ui.local_target_port", "Local target port"),
                 value: $profile.localPort,
                 format: .number
+            )
+            .help(ui("help.local_target_port", "The port where the target service is already running on this Mac."))
+        }
+    }
+
+    private func modeHelp(_ mode: TunnelMode) -> String {
+        switch mode {
+        case .socks5:
+            return ui("help.mode.socks", "Local app -> local SOCKS port -> SSH host -> network. Use it as a lightweight per-app proxy.")
+        case .localForward:
+            return ui("help.mode.local_forward", "This Mac local port -> SSH tunnel -> service reachable from the SSH server.")
+        case .remoteForward:
+            return ui("help.mode.remote_forward", "SSH server remote port -> SSH tunnel -> service running on this Mac.")
+        }
+    }
+
+    private var forwardingHelpTitle: String {
+        switch profile.mode {
+        case .socks5:
+            return ui("help.forwarding.socks.title", "SOCKS Proxy: local applications use the SSH host as a proxy")
+        case .localForward:
+            return ui("help.forwarding.local.title", "Local Forward: access a remote-side service from this Mac")
+        case .remoteForward:
+            return ui("help.forwarding.remote.title", "Remote Forward: access a service on this Mac from the SSH server")
+        }
+    }
+
+    private var forwardingHelpMessage: String {
+        switch profile.mode {
+        case .socks5:
+            return ui(
+                "help.forwarding.socks.body",
+                "Flow: your browser or app -> local SOCKS5 port -> encrypted SSH connection -> destination network. Use the displayed local host and port in the application's SOCKS5 proxy settings."
+            )
+        case .localForward:
+            return ui(
+                "help.forwarding.local.body",
+                "Flow: this Mac's local listen port -> encrypted SSH connection -> destination host and port reachable from the SSH server. Example: local 8080 can reach a proxy or database on the remote side."
+            )
+        case .remoteForward:
+            return ui(
+                "help.forwarding.remote.body",
+                "Flow: remote listen port on the SSH server -> encrypted SSH connection -> target service on this Mac. Example: remote 23000 can reach a local development server on port 3000. Keep the remote bind address at 127.0.0.1 unless broader exposure is intentional and secured."
             )
         }
     }
@@ -436,6 +553,50 @@ private struct RuleDetailView: View {
                 Image(systemName: "folder")
             }
             .help(panelTitle)
+        }
+    }
+}
+
+private struct HelpSectionHeader: View {
+    let title: String
+    let helpTitle: String
+    let helpMessage: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(title)
+            ContextHelpButton(title: helpTitle, message: helpMessage)
+        }
+    }
+}
+
+private struct ContextHelpButton: View {
+    let title: String
+    let message: String
+    @State private var isPresented = false
+
+    var body: some View {
+        Button {
+            isPresented.toggle()
+        } label: {
+            Image(systemName: "questionmark.circle")
+                .foregroundStyle(.secondary)
+                .frame(width: 16, height: 16)
+        }
+        .buttonStyle(.plain)
+        .help(title)
+        .accessibilityLabel(title)
+        .popover(isPresented: $isPresented, arrowEdge: .trailing) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.headline)
+                Text(message)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(14)
+            .frame(width: 360, alignment: .leading)
         }
     }
 }

@@ -19,6 +19,7 @@ This repository contains the SSH Proxy Tray macOS application.
 - `SOCKS Proxy`, `Local Forward`, and `Remote Forward` map to OpenSSH `-D`, `-L`, and `-R` respectively.
 - Remote forwarding can expose a local service through the SSH server. Preserve explicit bind-address fields and never silently widen them to `0.0.0.0`.
 - Every user-facing app string must use a stable localization key with matching `en` and `zh-Hans` values. Persisted profile values and SSH arguments must remain language-independent.
+- Ambiguous networking concepts must provide localized contextual help that states the direction, a concrete use case, and any exposure boundary. Help must remain accessible while a running rule locks editable fields.
 - Keep `README.md` as the complete Simplified Chinese entry and `README.en.md` as the complete English entry. Update both when behavior or setup changes; do not leave one as a summary of the other.
 - Keep localized Security and Changelog documents synchronized when their shared facts change.
 - Use `/usr/bin/ssh` on macOS and preserve strict host-key change detection.
