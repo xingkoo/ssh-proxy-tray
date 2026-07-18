@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Network
 import SSHProxyCore
@@ -53,6 +54,7 @@ final class TunnelRunner {
     private var logs: [String] = []
     private var stopping = false
     private var terminalFailureMessage: String?
+    private var stopCompletions: [() -> Void] = []
 
     func connect(profile: TunnelProfile, password: String?, askPassPath: String) throws {
         disconnect()
@@ -132,11 +134,13 @@ final class TunnelRunner {
         }
     }
 
-    func disconnect() {
+    func disconnect(completion: (() -> Void)? = nil) {
+        if let completion { stopCompletions.append(completion) }
         stopping = true
         guard let process else {
             cleanup()
             update(.disconnected)
+            finishStopping()
             return
         }
         if process.isRunning {
@@ -149,13 +153,21 @@ final class TunnelRunner {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak process] in
                     if let process, process.isRunning { process.terminate() }
                 }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak process] in
+                    if let process, process.isRunning {
+                        Darwin.kill(process.processIdentifier, SIGKILL)
+                    }
+                }
             } else {
                 process.terminate()
             }
             return
         }
         cleanup(clearProcess: false)
-        if !process.isRunning { update(.disconnected) }
+        if !process.isRunning {
+            update(.disconnected)
+            finishStopping()
+        }
     }
 
     func inspectRemoteForward(
@@ -212,6 +224,7 @@ final class TunnelRunner {
         cleanup()
         if wasStopping {
             update(.disconnected)
+            finishStopping()
             return
         }
         if let terminalFailureMessage {
@@ -375,6 +388,12 @@ final class TunnelRunner {
         controlSocketPath = nil
         remoteForwardPort = nil
         if clearProcess { process = nil }
+    }
+
+    private func finishStopping() {
+        let completions = stopCompletions
+        stopCompletions.removeAll()
+        for completion in completions { completion() }
     }
 
     private func sshDestination(for profile: TunnelProfile) -> String {

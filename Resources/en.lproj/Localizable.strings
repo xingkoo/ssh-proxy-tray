@@ -127,6 +127,15 @@
 "ui.local_service" = "Service on this Mac";
 "ui.via_ssh_exit" = "Through the SSH exit";
 "ui.port" = "Port";
+"ui.port_check" = "Local port check";
+"ui.port_check_detail" = "See which process owns each configured local port before connecting.";
+"ui.check_ports" = "Check ports again";
+"ui.no_listening_process" = "No listening process";
+"ui.current_process" = "Current app";
+"ui.kill_process" = "Terminate";
+"ui.kill_process_title" = "Terminate process?";
+"ui.kill_process_failed" = "The process could not be terminated.";
+"ui.kill_process_confirmation" = "Send SIGTERM to %@ (PID %d)? The process may be providing a service used by another application.";
 
 "remote_check.control_unavailable" = "The active SSH control connection is unavailable.";
 "remote_check.disconnected" = "Connect to verify the remote listener";

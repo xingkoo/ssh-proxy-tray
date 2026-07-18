@@ -2,6 +2,14 @@
 
 [English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
 
+## 0.9.0 - 2026-07-19
+
+- Delay application termination until every managed SSH runner has closed its ControlMaster and exited; use bounded TERM/KILL fallbacks only for app-owned SSH children.
+- Add automatic local-port inspection for every configured rule using structured `lsof -F` output.
+- Show the listening process name and PID for each configured local port, including separate SOCKS and HTTP proxy ports.
+- Add explicitly confirmed SIGTERM actions for external listener processes while preventing termination of PID 1 or SSH Proxy Tray itself.
+- Isolate port-inspection state per rule so switching rules cannot display stale results from another profile.
+
 ## 0.8.1 - 2026-07-19
 
 - Add an in-app language popover for Follow System, Simplified Chinese, and English; the full window updates immediately without a restart.

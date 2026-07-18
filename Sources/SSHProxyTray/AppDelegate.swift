@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem?
     private var windowController: NSWindowController?
     private var cancellables = Set<AnyCancellable>()
+    private var terminationPending = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         createMainWindow()
@@ -25,6 +26,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !terminationPending else { return .terminateLater }
+        terminationPending = true
+
+        model.disconnectAll { [weak self, weak sender] in
+            guard let self, let sender, self.terminationPending else { return }
+            self.terminationPending = false
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self, weak sender] in
+            guard let self, let sender, self.terminationPending else { return }
+            self.terminationPending = false
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 
     func applicationShouldHandleReopen(

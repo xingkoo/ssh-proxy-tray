@@ -31,7 +31,8 @@ Typical uses include:
 - Private keys, optional OpenSSH certificates, passwords, and optional Keychain storage.
 - ProxyJump, compression, connect timeout, and SSH keepalive settings.
 - Explicit port configuration; new rules choose an available port starting at `18080`.
-- Local port conflict detection before SSH starts.
+- Automatic local-port inspection with listener process names and PIDs; an explicitly confirmed action can send SIGTERM to an external occupying process.
+- Application exit waits for all managed SSH connections and ControlMaster sessions to close, avoiding leftover processes that retain ports.
 - Launch at login and per-rule auto-connect.
 - Never changes the macOS system proxy, PAC, or VPN configuration.
 
@@ -98,6 +99,8 @@ Click the status icon to open the dedicated management window, add a rule, and c
 - **Password** asks at connection time and is persisted only when **Save password in Keychain** is enabled.
 
 Each rule has its own port, enabled state, auto-connect setting, and manual Connect or Disconnect action.
+
+Local port check lists the listener process and PID for every configured local port. Termination always requires confirmation and sends SIGTERM only; PID 1 and SSH Proxy Tray itself cannot be selected. For a Remote Forward rule, the local port is the target service on this Mac, so a listener there is expected.
 
 A Proxy rule always provides its SOCKS5 port. Enable **Also provide HTTP/HTTPS proxy** to configure a second HTTP port. The copy menu exposes separate `socks5://...` and `http://...` endpoints.
 

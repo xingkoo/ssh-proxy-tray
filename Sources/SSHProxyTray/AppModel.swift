@@ -67,7 +67,6 @@ final class AppModel: ObservableObject {
     private let keychain = KeychainStore()
     private var runners: [UUID: TunnelRunner] = [:]
     private var isLoading = true
-    private var terminationObserver: NSObjectProtocol?
 
     init() {
         do {
@@ -80,14 +79,6 @@ final class AppModel: ObservableObject {
         launchAtLoginEnabled = SMAppService.mainApp.status == .enabled
         isLoading = false
 
-        terminationObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.willTerminateNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.disconnectAll() }
-        }
-
         if CommandLine.arguments.contains("--enable-launch-at-login") {
             setLaunchAtLogin(true)
         }
@@ -95,10 +86,6 @@ final class AppModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
             self?.connectAutomaticProfiles()
         }
-    }
-
-    deinit {
-        if let terminationObserver { NotificationCenter.default.removeObserver(terminationObserver) }
     }
 
     var selectedProfile: TunnelProfile? {
@@ -359,8 +346,20 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func disconnectAll() {
-        for runner in runners.values { runner.disconnect() }
+    func disconnectAll(completion: (() -> Void)? = nil) {
+        let activeRunners = Array(runners.values)
+        guard !activeRunners.isEmpty else {
+            completion?()
+            return
+        }
+
+        var remaining = activeRunners.count
+        for runner in activeRunners {
+            runner.disconnect {
+                remaining -= 1
+                if remaining == 0 { completion?() }
+            }
+        }
     }
 
     func copySelectedEndpoint() {

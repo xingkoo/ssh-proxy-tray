@@ -375,6 +375,14 @@ private struct RuleDetailView: View {
     private var inspection: RemoteForwardInspection {
         model.remoteForwardInspection(for: profile.id)
     }
+    private var checkedLocalPorts: [Int] {
+        switch profile.mode {
+        case .socks5:
+            return [profile.localPort, profile.httpProxyPort].compactMap { $0 }
+        case .localForward, .remoteForward:
+            return [profile.localPort]
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -428,6 +436,9 @@ private struct RuleDetailView: View {
                     ) {
                         SettingsGrid { forwardingFields }
                             .configurationLocked(running)
+
+                        LocalPortCheckView(ports: checkedLocalPorts)
+                            .id(profile.id)
 
                         if profile.mode == .remoteForward {
                             Divider().padding(.vertical, 2)
@@ -1355,6 +1366,170 @@ private struct RemoteListenerStatusView: View {
             return message.isEmpty
                 ? ui("remote_check.unavailable_detail", "The server does not provide a supported listener inspection command.")
                 : message
+        }
+    }
+}
+
+private struct LocalPortCheckView: View {
+    let ports: [Int]
+    @State private var inspections: [LocalPortInspection] = []
+    @State private var checking = false
+    @State private var processToTerminate: LocalPortProcess?
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(AppTheme.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(ui("ui.port_check", "Local port check"))
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(AppTheme.ink)
+                    Text(ui("ui.port_check_detail", "See which process owns each configured local port before connecting."))
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.muted)
+                }
+                Spacer()
+                Button(action: refresh) {
+                    Image(systemName: checking ? "arrow.triangle.2.circlepath" : "arrow.clockwise")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(AppTheme.accent)
+                .disabled(checking)
+                .help(ui("ui.check_ports", "Check ports again"))
+            }
+
+            if checking {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ForEach(inspections) { inspection in
+                    portRow(inspection)
+                }
+            }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.danger)
+            }
+        }
+        .padding(12)
+        .background(AppTheme.canvas.opacity(0.72))
+        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .task { refresh() }
+        .alert(
+            ui("ui.kill_process_title", "Terminate process?"),
+            isPresented: terminationAlertPresented
+        ) {
+            Button(ui("ui.cancel", "Cancel"), role: .cancel) {}
+            Button(ui("ui.kill_process", "Terminate"), role: .destructive) {
+                guard let process = processToTerminate else { return }
+                guard LocalPortInspector.terminate(pid: process.pid) else {
+                    errorMessage = SSHProxyL10n.string(
+                        "ui.kill_process_failed",
+                        default: "The process could not be terminated."
+                    )
+                    return
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { refresh() }
+            }
+        } message: {
+            if let process = processToTerminate {
+                Text(SSHProxyL10n.format(
+                    "ui.kill_process_confirmation",
+                    default: "Send SIGTERM to %@ (PID %d)? The process may be providing a service used by another application.",
+                    process.name,
+                    process.pid
+                ))
+            }
+        }
+    }
+
+    private func portRow(_ inspection: LocalPortInspection) -> some View {
+        HStack(spacing: 10) {
+            Text(":\(inspection.port)")
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundStyle(AppTheme.ink)
+                .frame(width: 72, alignment: .leading)
+
+            if inspection.processes.isEmpty {
+                Text(ui("ui.no_listening_process", "No listening process"))
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.muted)
+            } else {
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(inspection.processes) { process in
+                        HStack(spacing: 7) {
+                            Image(systemName: "shippingbox")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.purple)
+                            Text(displayName(for: process))
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(AppTheme.ink)
+                            Text("PID \(process.pid)")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(AppTheme.muted)
+                            Spacer()
+                            if canTerminate(process) {
+                                Button {
+                                    processToTerminate = process
+                                } label: {
+                                    Label(ui("ui.kill_process", "Terminate"), systemImage: "xmark.bin")
+                                        .font(.caption)
+                                }
+                                .buttonStyle(.borderless)
+                                .foregroundStyle(AppTheme.danger)
+                            } else {
+                                Text(ui("ui.current_process", "Current app"))
+                                    .font(.caption2)
+                                    .foregroundStyle(AppTheme.muted)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func displayName(for process: LocalPortProcess) -> String {
+        switch process.name {
+        case "SSHProxyT": return "SSH Proxy Tray"
+        case "ssh": return "OpenSSH (ssh)"
+        default: return process.name
+        }
+    }
+
+    private func canTerminate(_ process: LocalPortProcess) -> Bool {
+        process.pid > 1 && process.pid != Int32(ProcessInfo.processInfo.processIdentifier)
+    }
+
+    private var terminationAlertPresented: Binding<Bool> {
+        Binding(
+            get: { processToTerminate != nil },
+            set: { if !$0 { processToTerminate = nil } }
+        )
+    }
+
+    private func refresh() {
+        guard !checking else { return }
+        checking = true
+        errorMessage = nil
+        let requestedPorts = Array(Set(ports)).sorted()
+        Task { @MainActor in
+            let results = await withTaskGroup(of: LocalPortInspection.self) { group in
+                for port in requestedPorts {
+                    group.addTask { await LocalPortInspector.inspect(port: port) }
+                }
+                var collected: [LocalPortInspection] = []
+                for await result in group { collected.append(result) }
+                return collected.sorted { $0.port < $1.port }
+            }
+            inspections = results
+            checking = false
         }
     }
 }

@@ -19,6 +19,9 @@ Please report credential exposure, command injection, host-key validation, or lo
 - Remote-listener inspection reuses the active authenticated OpenSSH ControlMaster socket. Control sockets use short, per-connection paths under `/tmp` and are removed when the tunnel stops.
 - Automatic `GatewayPorts` configuration is never silent. It requires an explicit warning confirmation and passwordless `sudo`, writes only a dedicated sshd drop-in, validates with `sshd -t`, reloads rather than restarts SSH, and restores the previous file if validation or reload fails.
 - `GatewayPorts clientspecified` is server-wide and can allow other authorized SSH users to request non-loopback remote listeners. Firewall rules and `PermitListen` remain the server administrator's responsibility.
+- Local port inspection executes `/usr/sbin/lsof` with fixed arguments and parses structured `-F` fields; profile values are not interpolated into a shell command.
+- Process termination is never automatic. It requires an explicit confirmation, sends SIGTERM only, and rejects PID 1 and the running SSH Proxy Tray process. Users must confirm that an occupying process is safe to stop.
+- Application termination waits for managed SSH ControlMaster sessions and child processes to exit. A bounded SIGKILL fallback applies only to SSH child processes created and owned by this app.
 
 ## SSH Trust
 

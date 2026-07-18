@@ -127,6 +127,15 @@
 "ui.local_service" = "这台 Mac 上的服务";
 "ui.via_ssh_exit" = "通过 SSH 出口访问";
 "ui.port" = "端口";
+"ui.port_check" = "本地端口检查";
+"ui.port_check_detail" = "连接前检查每个本地配置端口由哪个进程监听。";
+"ui.check_ports" = "重新检查端口";
+"ui.no_listening_process" = "没有监听进程";
+"ui.current_process" = "当前应用";
+"ui.kill_process" = "终止进程";
+"ui.kill_process_title" = "终止进程？";
+"ui.kill_process_failed" = "无法终止该进程。";
+"ui.kill_process_confirmation" = "向 %@（PID %d）发送 SIGTERM？该进程可能正在为其他应用提供服务。";
 
 "remote_check.control_unavailable" = "当前 SSH 控制连接不可用。";
 "remote_check.disconnected" = "连接后检查远程监听";
