@@ -20,6 +20,9 @@ This repository contains the SSH Proxy Tray macOS application.
 - A Proxy rule may expose both SOCKS5 and HTTP/HTTPS endpoints. Keep one `ssh -D` process and route the loopback-only HTTP listener through that SOCKS endpoint; never open a second SSH process for HTTP.
 - The local HTTP adapter must support HTTPS CONNECT and ordinary HTTP absolute-form requests, cap request headers, strip proxy credentials before forwarding, use a bounded handshake, and remain covered by parser/encoder tests.
 - Remote forwarding can expose a local service through the SSH server. Preserve explicit bind-address fields and never silently widen them to `0.0.0.0`.
+- Inspect the actual remote listener through the active OpenSSH control connection after a Remote Forward connects; do not treat `ExitOnForwardFailure` as proof that a requested public bind was honored.
+- Never change remote sshd policy silently. Automatic `GatewayPorts clientspecified` configuration requires an explicit warning confirmation, passwordless sudo, a dedicated drop-in backup, `sshd -t`, reload instead of restart, rollback on failure, in-place forward refresh, and post-change inspection.
+- Disabling external access changes only the profile bind address. Never automatically revert server-wide `GatewayPorts`, which may be shared by other users and rules.
 - Every user-facing app string must use a stable localization key with matching `en` and `zh-Hans` values. Persisted profile values and SSH arguments must remain language-independent.
 - Ambiguous networking concepts must provide localized contextual help that states the direction, a concrete use case, and any exposure boundary. Help must remain accessible while a running rule locks editable fields.
 - Keep `README.md` as the complete Simplified Chinese entry and `README.en.md` as the complete English entry. Update both when behavior or setup changes; do not leave one as a summary of the other.

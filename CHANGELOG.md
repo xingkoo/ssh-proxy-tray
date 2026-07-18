@@ -2,6 +2,17 @@
 
 [English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
 
+## 0.6.0 - 2026-07-18
+
+- Redesign the management window around rule status, connection paths, compact settings sections, and clearer actions.
+- Replace the raw Remote Forward bind field with server-only, external-device, and custom access choices.
+- Inspect the server's actual remote listener through the active authenticated OpenSSH ControlMaster session.
+- Distinguish confirmed loopback, confirmed external, missing, checking, and unsupported listener states.
+- Add explicitly confirmed `GatewayPorts clientspecified` configuration for supported systemd/OpenSSH servers, with backup, `sshd -t`, reload, rollback, in-place forward refresh, and verification.
+- Document Gatekeeper warnings for ad-hoc builds, checksum verification, the trusted-source quarantine workaround, and the Developer ID/notarization long-term solution.
+- Add acknowledgements for OpenAI ChatGPT's end-to-end development assistance and ZhaoYang1's compute support.
+- Keep complete English and Simplified Chinese UI, README, Security, and Changelog coverage.
+
 ## 0.5.0 - 2026-07-18
 
 - Let one Proxy rule expose SOCKS5 and optional HTTP/HTTPS endpoints through a single `ssh -D` connection.

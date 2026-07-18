@@ -47,6 +47,8 @@ final class TunnelRunner {
     private var errorPipe: Pipe?
     private var askPassBroker: AskPassBroker?
     private var httpProxyServer: LocalHTTPProxyServer?
+    private var remoteForwardInspector: RemoteForwardInspector?
+    private var controlSocketPath: String?
     private var logs: [String] = []
     private var stopping = false
     private var terminalFailureMessage: String?
@@ -72,10 +74,20 @@ final class TunnelRunner {
             environment["DISPLAY"] = environment["DISPLAY"] ?? ":0"
         }
 
+        let socketPath = "/tmp/spt-\(UUID().uuidString.prefix(12)).sock"
+        try? FileManager.default.removeItem(atPath: socketPath)
+        controlSocketPath = socketPath
+
         let process = Process()
         let pipe = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        process.arguments = SSHArgumentsBuilder.arguments(for: profile)
+        var arguments = SSHArgumentsBuilder.arguments(for: profile)
+        arguments.insert(contentsOf: [
+            "-o", "ControlMaster=yes",
+            "-o", "ControlPersist=no",
+            "-o", "ControlPath=\(socketPath)"
+        ], at: 0)
+        process.arguments = arguments
         process.environment = environment
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
@@ -98,6 +110,10 @@ final class TunnelRunner {
 
         self.process = process
         errorPipe = pipe
+        remoteForwardInspector = RemoteForwardInspector(
+            controlPath: socketPath,
+            destination: sshDestination(for: profile)
+        )
 
         do {
             try process.run()
@@ -127,6 +143,51 @@ final class TunnelRunner {
         }
         cleanup(clearProcess: false)
         if !process.isRunning { update(.disconnected) }
+    }
+
+    func inspectRemoteForward(
+        port: Int,
+        completion: @escaping (RemoteForwardInspection) -> Void
+    ) {
+        guard process?.isRunning == true, let remoteForwardInspector else {
+            completion(.unsupported(SSHProxyL10n.string(
+                "remote_check.control_unavailable",
+                default: "The active SSH control connection is unavailable."
+            )))
+            return
+        }
+        remoteForwardInspector.inspect(port: port, completion: completion)
+    }
+
+    func configureGatewayPorts(completion: @escaping (RemoteCommandResult) -> Void) {
+        guard process?.isRunning == true, let remoteForwardInspector else {
+            completion(RemoteCommandResult(
+                status: -1,
+                output: SSHProxyL10n.string(
+                    "remote_check.control_unavailable",
+                    default: "The active SSH control connection is unavailable."
+                )
+            ))
+            return
+        }
+        remoteForwardInspector.configureGatewayPorts(completion: completion)
+    }
+
+    func refreshRemoteForward(
+        profile: TunnelProfile,
+        completion: @escaping (RemoteCommandResult) -> Void
+    ) {
+        guard process?.isRunning == true, let remoteForwardInspector else {
+            completion(RemoteCommandResult(
+                status: -1,
+                output: SSHProxyL10n.string(
+                    "remote_check.control_unavailable",
+                    default: "The active SSH control connection is unavailable."
+                )
+            ))
+            return
+        }
+        remoteForwardInspector.refreshRemoteForward(profile: profile, completion: completion)
     }
 
     private func handleTermination(process: Process, status: Int32) {
@@ -282,6 +343,21 @@ final class TunnelRunner {
         askPassBroker = nil
         httpProxyServer?.stop()
         httpProxyServer = nil
+        remoteForwardInspector?.stop()
+        remoteForwardInspector = nil
+        if let controlSocketPath {
+            try? FileManager.default.removeItem(atPath: controlSocketPath)
+        }
+        controlSocketPath = nil
         if clearProcess { process = nil }
+    }
+
+    private func sshDestination(for profile: TunnelProfile) -> String {
+        switch profile.authentication {
+        case .sshConfig:
+            return profile.sshHost
+        case .keyFile, .password:
+            return "\(profile.username)@\(profile.sshHost)"
+        }
     }
 }

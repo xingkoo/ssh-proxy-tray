@@ -16,6 +16,9 @@
 - 可选 HTTP/HTTPS 端点是建立在该规则 SOCKS5 隧道之上的 loopback 本机适配器，不会再建立一条 SSH 连接。
 - HTTP 适配器将请求头限制为 64 KiB，将初始解析与 SOCKS 握手限制为 15 秒，在转发前移除代理凭证，并强制普通 HTTP 请求关闭上游连接，避免连接被复用于另一个目标。由于它绝不暴露到 loopback 之外，因此不提供代理认证。
 - 远程转发默认绑定 `127.0.0.1`。绑定到 `0.0.0.0` 可能通过 SSH 服务器暴露本地目标，并且需要服务端允许相应的 `GatewayPorts` 策略。
+- 远程监听检查复用当前已认证的 OpenSSH ControlMaster socket。控制 socket 使用 `/tmp` 下每次连接独立的短路径，并在隧道停止时删除。
+- 自动配置 `GatewayPorts` 永远不会静默执行。它需要用户在警告中明确确认和服务器免密码 `sudo`，只写入专用 sshd drop-in，使用 `sshd -t` 校验，reload 而不是 restart SSH；校验或 reload 失败时恢复原文件。
+- `GatewayPorts clientspecified` 是服务器级策略，可能允许其他已授权 SSH 用户请求非 loopback 远程监听。防火墙和 `PermitListen` 仍由服务器管理员负责。
 
 ## SSH 信任
 

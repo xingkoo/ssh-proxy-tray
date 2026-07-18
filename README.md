@@ -24,6 +24,8 @@ SSH Proxy Tray 是一个轻量、原生的 macOS SSH 代理与端口转发工具
 - 多条规则并发运行，每条规则独立启用、连接、断开和记录状态。
 - 一个代理规则、一条 `ssh -D` 连接，同时提供独立可配置的 SOCKS5 与 HTTP/HTTPS 端口。
 - 清晰显示未连接、正在连接、已连接、正在断开和连接失败。
+- 远程转发连接后检查服务器实际监听地址，区分“仅服务器本机”和“外部监听”。
+- 经用户明确确认后，可在支持的 systemd/OpenSSH 服务器上备份、校验并配置 `GatewayPorts clientspecified`。
 - 支持 `~/.ssh/config` Host alias 及一键导入具体 Host。
 - 支持私钥、OpenSSH certificate、用户名密码和可选钥匙串保存。
 - 支持 ProxyJump、压缩、连接超时和 SSH keepalive 参数。
@@ -70,7 +72,21 @@ swift test
 ./scripts/install.sh --launch-at-login
 ```
 
-应用安装到 `/Applications/SSH Proxy Tray.app`。本地构建使用 ad-hoc 签名；公开分发已签名二进制仍需要 Apple Developer ID 和 notarization，当前 GitHub Release 以源码发布为主。
+应用安装到 `/Applications/SSH Proxy Tray.app`。本地与当前 GitHub 二进制包使用 ad-hoc 签名；彻底消除 Gatekeeper 警告仍需要 Apple Developer ID 签名和 Apple notarization。
+
+### 下载的应用提示“已损坏”或无法验证
+
+macOS 会为浏览器下载的文件添加 quarantine 属性。未经过 Apple notarization 的 ad-hoc 签名应用可能被提示“已损坏”“无法打开”或“无法验证开发者”。优先从源码构建；使用打包版本时，只从本仓库的官方 GitHub Release 下载，并先核对同一 Release 提供的 `SHA256SUMS`。
+
+将应用移动到 `/Applications` 后，可以先在 Finder 中右键应用并选择“打开”。如果仍被提示损坏，并且已经确认文件来自官方 Release，再执行：
+
+```bash
+codesign --verify --deep --strict "/Applications/SSH Proxy Tray.app"
+xattr -dr com.apple.quarantine "/Applications/SSH Proxy Tray.app"
+open "/Applications/SSH Proxy Tray.app"
+```
+
+`xattr` 会移除该应用的下载隔离标记，相当于绕过本次 Gatekeeper 来源检查。不要对来源不明的应用执行。长期正式分发方案仍是 Developer ID 签名、notarization 和 stapling，而不是要求所有用户关闭系统安全功能。
 
 ## 界面配置
 
@@ -84,7 +100,19 @@ swift test
 
 代理规则始终提供 SOCKS5 端口；启用“同时提供 HTTP/HTTPS 代理”后，再配置一个 HTTP 端口。顶部复制菜单可以分别复制 `socks5://...` 和 `http://...` 端点。
 
-界面中的问号按钮会结合当前规则类型解释数据流和典型场景。将鼠标停留在地址、端口和高级参数上，可以查看该字段的用途和安全边界。帮助在规则已经连接、配置字段被锁定时仍然可用。
+详情顶部直接显示当前规则的数据流，远程转发使用“仅 SSH 服务器 / 外部设备 / 自定义地址”选择访问范围。问号按钮继续说明典型场景和安全边界；帮助与远程监听状态在规则已经连接、配置字段被锁定时仍然可用。
+
+### 远程监听检查与服务器配置
+
+远程转发连接后，应用会通过同一条已认证的 OpenSSH ControlMaster 会话读取服务器实际监听结果，不会建立第二次登录：
+
+- 请求 `127.0.0.1` 且服务器只监听 loopback：显示“已确认仅服务器本机监听”。
+- 请求 `0.0.0.0` 且服务器实际公开监听：显示“已确认外部监听”。
+- 请求 `0.0.0.0` 但服务器仍只监听 `127.0.0.1`：明确提示 `GatewayPorts` 限制。
+
+检测到限制时，用户可以明确确认“一键配置服务器”。该操作只支持具有免密码 `sudo`、使用 systemd、加载 `/etc/ssh/sshd_config.d/*.conf` 的 OpenSSH 服务器。应用会备份目标配置、写入 `GatewayPorts clientspecified`、执行 `sshd -t`、reload SSH 服务，然后通过 control command 原地刷新当前 `-R` 转发并复验。校验或 reload 失败会恢复原配置。
+
+这是服务器级安全策略，可能影响其他 SSH 用户，因此应用不会静默执行，也不会在关闭某条规则时自动撤销。确认外部监听只代表 sshd 已绑定相应地址；云安全组、系统防火墙和服务自身认证仍需单独配置。
 
 ## CLI 配置
 
@@ -159,13 +187,19 @@ curl --proxy http://127.0.0.1:18081 https://example.com
 - 保存的密码进入 macOS 钥匙串；profile 文件不保存密码并使用 `0600` 权限。
 - 新主机密钥使用 OpenSSH `accept-new`；已变化的主机密钥仍会被拒绝。
 - HTTP/HTTPS 适配器只监听 loopback，限制请求头和初始握手时间，并在转发前移除代理凭证头。
-- 应用不会自动扩大本地或远程监听地址。
+- 应用不会静默扩大本地或远程监听地址；服务器级 `GatewayPorts` 修改必须由用户在警告中明确确认。
 
 安全问题请参阅 [SECURITY.md](SECURITY.md)。
 
 ## Windows 路线
 
 profile、校验和 SSH 参数模型已经与 macOS UI 分离。未来 Windows 版本可以复用这些语义，再独立选择 Windows OpenSSH 或经过审计的内置 SSH backend；当前版本不提前实现 Windows。
+
+## 致谢
+
+特别感谢 **OpenAI ChatGPT**。本项目从产品讨论、交互与架构设计，到代码实现、测试、双语文档和开源发布，全程由 ChatGPT 协助完成。
+
+特别感谢 LinuxDo 佬友 [**ZhaoYang1**](https://linux.do/u/zhaoyang1) **提供的算力支持。**
 
 ## 许可证
 

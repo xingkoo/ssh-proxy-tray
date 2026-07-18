@@ -24,6 +24,8 @@ Typical uses include:
 - Multiple concurrent rules with independent enabled and runtime states.
 - One Proxy rule and one `ssh -D` connection for separately configurable SOCKS5 and HTTP/HTTPS ports.
 - Clear Disconnected, Connecting, Connected, Disconnecting, and Failed states.
+- Post-connect inspection of the server's actual remote-forward listener, distinguishing server-only and external binds.
+- Explicitly confirmed backup, validation, and `GatewayPorts clientspecified` configuration on supported systemd/OpenSSH servers.
 - `~/.ssh/config` aliases and import of concrete Host entries.
 - Private keys, optional OpenSSH certificates, passwords, and optional Keychain storage.
 - ProxyJump, compression, connect timeout, and SSH keepalive settings.
@@ -70,7 +72,21 @@ Enable launch at login during local installation:
 ./scripts/install.sh --launch-at-login
 ```
 
-The app is installed as `/Applications/SSH Proxy Tray.app`. Local builds are ad-hoc signed. Public signed binary distribution still requires an Apple Developer ID and notarization, so current GitHub releases primarily distribute source code.
+The app is installed as `/Applications/SSH Proxy Tray.app`. Local builds and current GitHub binary archives are ad-hoc signed. Eliminating Gatekeeper warnings requires an Apple Developer ID signature and Apple notarization.
+
+### Downloaded app reports that it is damaged or cannot be verified
+
+macOS adds a quarantine attribute to browser downloads. An ad-hoc signed app without Apple notarization may be reported as damaged, unable to open, or from an unidentified developer. Building from source is preferred. For a packaged build, download only from this repository's official GitHub Release and verify it against the `SHA256SUMS` file from the same release.
+
+After moving the app to `/Applications`, first try right-clicking it in Finder and selecting **Open**. If macOS still reports damage and you have verified the official source, run:
+
+```bash
+codesign --verify --deep --strict "/Applications/SSH Proxy Tray.app"
+xattr -dr com.apple.quarantine "/Applications/SSH Proxy Tray.app"
+open "/Applications/SSH Proxy Tray.app"
+```
+
+`xattr` removes the download quarantine marker and bypasses the Gatekeeper origin check for this app. Never do this for an untrusted download. The long-term distribution solution remains Developer ID signing, notarization, and stapling, not disabling macOS security globally.
 
 ## Configure from the UI
 
@@ -84,7 +100,19 @@ Each rule has its own port, enabled state, auto-connect setting, and manual Conn
 
 A Proxy rule always provides its SOCKS5 port. Enable **Also provide HTTP/HTTPS proxy** to configure a second HTTP port. The copy menu exposes separate `socks5://...` and `http://...` endpoints.
 
-Question-mark buttons explain the selected rule's data flow and typical use case. Hover over address, port, and advanced SSH fields for field-specific purpose and security guidance. Help remains available while a connected rule locks its editable fields.
+The detail view shows the rule's connection path first. Remote Forward uses a clear **SSH server only / External devices / Custom address** access selector. Contextual help and the remote-listener result remain available while a connected rule locks editable fields.
+
+### Remote-listener inspection and server configuration
+
+After a remote forward connects, the app uses the same authenticated OpenSSH ControlMaster session to read the server's actual listening sockets. It does not perform a second login:
+
+- Requested `127.0.0.1` and actual loopback listener: reports a confirmed server-only listener.
+- Requested `0.0.0.0` and actual public listener: reports a confirmed external listener.
+- Requested `0.0.0.0` but actual `127.0.0.1`: reports that server-side `GatewayPorts` restricted the bind.
+
+When that restriction is detected, the user can explicitly confirm **Configure Server**. Automatic configuration is limited to OpenSSH servers with passwordless `sudo`, systemd, and an active `/etc/ssh/sshd_config.d/*.conf` include. The app backs up its target file, writes `GatewayPorts clientspecified`, runs `sshd -t`, reloads SSH, refreshes only the active `-R` through an OpenSSH control command, and verifies the result. Validation or reload failure restores the previous configuration.
+
+This is a server-wide security policy that can affect other SSH users, so the app never performs it silently and never reverts it when one rule is disabled. A confirmed external listener only proves the sshd bind; cloud security groups, host firewalls, and service authentication remain separate controls.
 
 ## Configure from the CLI
 
@@ -159,13 +187,19 @@ curl --proxy http://127.0.0.1:18081 https://example.com
 - Saved passwords use macOS Keychain; profile files never contain passwords and use `0600` permissions.
 - New host keys use OpenSSH `accept-new`; changed host keys remain blocked.
 - The HTTP/HTTPS adapter listens only on loopback, caps headers and initial handshake time, and strips proxy credential headers before forwarding.
-- The app never silently widens a local or remote bind address.
+- The app never silently widens a local or remote bind address. Server-wide `GatewayPorts` changes require explicit confirmation in a warning dialog.
 
 See [SECURITY.md](SECURITY.md) for reporting and credential details.
 
 ## Windows roadmap
 
 The profile, validation, and SSH argument model is isolated from the macOS UI. A future Windows build can reuse these semantics and separately select Windows OpenSSH or an audited bundled SSH backend. Windows is not implemented in the current version.
+
+## Acknowledgements
+
+Special thanks to **OpenAI ChatGPT**. ChatGPT assisted throughout the entire project, from product discussion, interaction and architecture design through implementation, testing, bilingual documentation, and open-source release.
+
+Special thanks to LinuxDo community member [**ZhaoYang1**](https://linux.do/u/zhaoyang1) **for providing compute support.**
 
 ## License
 

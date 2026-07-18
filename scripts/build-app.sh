@@ -33,5 +33,6 @@ codesign --force --deep --sign - "$APP"
 
 rm -f "$ROOT/dist/ssh-proxy-tray-macos.zip"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ROOT/dist/ssh-proxy-tray-macos.zip"
+(cd "$ROOT/dist" && shasum -a 256 ssh-proxy-tray-macos.zip > SHA256SUMS)
 
 echo "Built $APP"

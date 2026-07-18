@@ -59,6 +59,7 @@ final class AppModel: ObservableObject {
     @Published var enteredPassword = ""
     @Published private(set) var statuses: [UUID: TunnelStatus] = [:]
     @Published private(set) var logsByProfile: [UUID: [String]] = [:]
+    @Published private(set) var remoteForwardInspections: [UUID: RemoteForwardInspection] = [:]
     @Published private(set) var launchAtLoginEnabled = false
     @Published var errorMessage: String?
 
@@ -129,6 +130,10 @@ final class AppModel: ObservableObject {
         logsByProfile[profileID] ?? []
     }
 
+    func remoteForwardInspection(for profileID: UUID) -> RemoteForwardInspection {
+        remoteForwardInspections[profileID] ?? .notChecked
+    }
+
     func isRunning(profileID: UUID) -> Bool {
         switch status(for: profileID) {
         case .connecting, .connected, .disconnecting: return true
@@ -179,6 +184,7 @@ final class AppModel: ObservableObject {
         profiles.remove(at: index)
         logsByProfile.removeValue(forKey: selectedProfileID)
         statuses.removeValue(forKey: selectedProfileID)
+        remoteForwardInspections.removeValue(forKey: selectedProfileID)
         self.selectedProfileID = profiles.first?.id
         enteredPassword = ""
     }
@@ -261,6 +267,7 @@ final class AppModel: ObservableObject {
             runners[profile.id] = runner
             runner.onUpdate = { [weak self] status, logs in
                 guard let self else { return }
+                let previousStatus = self.statuses[profile.id]
                 self.statuses[profile.id] = status
                 self.logsByProfile[profile.id] = logs
                 if status == .connected, self.selectedProfileID == profile.id {
@@ -275,6 +282,13 @@ final class AppModel: ObservableObject {
                     self.statuses.removeValue(forKey: profile.id)
                     self.logsByProfile.removeValue(forKey: profile.id)
                 }
+                if status == .connected,
+                   previousStatus != .connected,
+                   profile.mode == .remoteForward {
+                    self.inspectRemoteForward(profileID: profile.id)
+                } else if status == .disconnected {
+                    self.remoteForwardInspections[profile.id] = .notChecked
+                }
             }
 
             errorMessage = nil
@@ -288,6 +302,61 @@ final class AppModel: ObservableObject {
     func disconnect(profileID: UUID) {
         runners[profileID]?.disconnect()
         if runners[profileID] == nil { statuses[profileID] = .disconnected }
+    }
+
+    func inspectRemoteForward(profileID: UUID) {
+        guard let profile = profiles.first(where: { $0.id == profileID }),
+              profile.mode == .remoteForward,
+              status(for: profileID) == .connected,
+              let runner = runners[profileID] else {
+            remoteForwardInspections[profileID] = .notChecked
+            return
+        }
+        remoteForwardInspections[profileID] = .checking
+        runner.inspectRemoteForward(port: profile.remotePort) { [weak self] result in
+            guard let self, self.status(for: profileID) == .connected else { return }
+            self.remoteForwardInspections[profileID] = result
+        }
+    }
+
+    func configureRemoteServer(profileID: UUID) {
+        guard let profile = profiles.first(where: { $0.id == profileID }),
+              profile.mode == .remoteForward,
+              profile.remoteHost == "0.0.0.0",
+              status(for: profileID) == .connected,
+              let runner = runners[profileID] else { return }
+
+        remoteForwardInspections[profileID] = .configuring
+        runner.configureGatewayPorts { [weak self, weak runner] result in
+            guard let self, let runner else { return }
+            guard self.status(for: profileID) == .connected else { return }
+            guard result.status == 0,
+                  result.output.contains("SSH_PROXY_TRAY_CONFIGURED") else {
+                let message = self.remoteConfigurationFailureMessage(result)
+                self.remoteForwardInspections[profileID] = .unsupported(message)
+                self.errorMessage = "\(profile.name): \(message)"
+                return
+            }
+
+            runner.refreshRemoteForward(profile: profile) { [weak self] refreshResult in
+                guard let self else { return }
+                guard self.status(for: profileID) == .connected else { return }
+                guard refreshResult.status == 0 else {
+                    let message = SSHProxyL10n.string(
+                        "remote_check.refresh_failed",
+                        default: "The server was configured, but the remote forward could not be refreshed. Disconnect and reconnect this rule."
+                    )
+                    self.remoteForwardInspections[profileID] = .unsupported(message)
+                    self.errorMessage = "\(profile.name): \(message)"
+                    return
+                }
+                self.errorMessage = nil
+                self.remoteForwardInspections[profileID] = .checking
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    self?.inspectRemoteForward(profileID: profileID)
+                }
+            }
+        }
     }
 
     func disconnectAll() {
@@ -358,5 +427,43 @@ final class AppModel: ObservableObject {
         let executableDirectory = Bundle.main.executableURL?.deletingLastPathComponent()
             ?? URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
         return executableDirectory.appendingPathComponent("SSHAskPass").path
+    }
+
+    private func remoteConfigurationFailureMessage(_ result: RemoteCommandResult) -> String {
+        if result.output.contains("SSH_PROXY_TRAY_SUDO_REQUIRED") {
+            return SSHProxyL10n.string(
+                "remote_check.sudo_required",
+                default: "Passwordless sudo is not available. Configure GatewayPorts in a terminal, then reconnect."
+            )
+        }
+        if result.output.contains("SSH_PROXY_TRAY_DROPIN_NOT_INCLUDED") {
+            return SSHProxyL10n.string(
+                "remote_check.dropin_unavailable",
+                default: "This SSH server does not load sshd_config.d drop-in files. Configure GatewayPorts manually."
+            )
+        }
+        if result.output.contains("SSH_PROXY_TRAY_UNSUPPORTED_SERVER")
+            || result.output.contains("SSH_PROXY_TRAY_SSH_SERVICE_NOT_FOUND") {
+            return SSHProxyL10n.string(
+                "remote_check.server_unsupported",
+                default: "Automatic configuration is not supported on this server. Configure GatewayPorts manually."
+            )
+        }
+        if result.output.contains("SSH_PROXY_TRAY_VALIDATION_FAILED") {
+            return SSHProxyL10n.string(
+                "remote_check.validation_failed",
+                default: "The SSH configuration failed validation and was rolled back."
+            )
+        }
+        if result.output.contains("SSH_PROXY_TRAY_RELOAD_FAILED") {
+            return SSHProxyL10n.string(
+                "remote_check.reload_failed",
+                default: "The SSH service could not be reloaded. The previous configuration was restored."
+            )
+        }
+        return SSHProxyL10n.string(
+            "remote_check.configuration_failed",
+            default: "The SSH server could not be configured automatically."
+        )
     }
 }

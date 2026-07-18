@@ -2,6 +2,17 @@
 
 [English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
 
+## 0.6.0 - 2026-07-18
+
+- 重新设计管理窗口，突出规则状态、连接路径、紧凑配置分区和主要操作。
+- 将远程转发的原始绑定地址输入改为“仅 SSH 服务器 / 外部设备 / 自定义地址”访问范围。
+- 通过当前已认证的 OpenSSH ControlMaster 会话检查服务器实际远程监听。
+- 区分已确认 loopback、已确认外部监听、监听缺失、正在检查和无法检查等状态。
+- 为支持的 systemd/OpenSSH 服务器增加需要用户明确确认的 `GatewayPorts clientspecified` 配置，包含备份、`sshd -t`、reload、失败回滚、原地刷新转发和复验。
+- 记录 ad-hoc 构建的 Gatekeeper 提示、校验和验证、可信来源 quarantine 临时处理方法，以及 Developer ID/notarization 长期方案。
+- 增加对 OpenAI ChatGPT 全程开发协助和 ZhaoYang1 算力支持的致谢。
+- 保持完整英文与简体中文界面、README、Security 和 Changelog。
+
 ## 0.5.0 - 2026-07-18
 
 - 一条代理规则可以通过同一个 `ssh -D` 连接同时提供 SOCKS5 与可选 HTTP/HTTPS 端点。

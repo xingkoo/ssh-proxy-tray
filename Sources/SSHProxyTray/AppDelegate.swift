@@ -39,14 +39,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let content = MainWindowView().environmentObject(model)
         let hostingController = NSHostingController(rootView: content)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 920, height: 640),
+            contentRect: NSRect(x: 0, y: 0, width: 1080, height: 740),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "SSH Proxy Tray"
         window.contentViewController = hostingController
-        window.contentMinSize = NSSize(width: 820, height: 580)
+        window.contentMinSize = NSSize(width: 980, height: 680)
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.setFrameAutosaveName("SSHProxyTrayMainWindow")
