@@ -27,7 +27,7 @@ final class SSHArgumentsBuilderTests: XCTestCase {
             username: "deploy",
             authentication: .keyFile,
             identityFile: "~/.ssh/id_ed25519",
-            mode: .remoteProxy,
+            mode: .localForward,
             localPort: 8080,
             remoteHost: "127.0.0.1",
             remotePort: 3128
@@ -55,5 +55,48 @@ final class SSHArgumentsBuilderTests: XCTestCase {
         XCTAssertTrue(arguments.contains("PubkeyAuthentication=no"))
         XCTAssertEqual(arguments.last, "user@example.test")
         XCTAssertFalse(arguments.joined(separator: " ").contains("password="))
+    }
+
+    func testRemoteForwardArguments() {
+        let profile = TunnelProfile(
+            name: "Expose local service",
+            sshHost: "server",
+            mode: .remoteForward,
+            localPort: 3000,
+            remoteHost: "127.0.0.1",
+            remotePort: 23000
+        )
+
+        let arguments = SSHArgumentsBuilder.arguments(for: profile)
+
+        XCTAssertTrue(arguments.contains("-R"))
+        XCTAssertTrue(arguments.contains("127.0.0.1:23000:127.0.0.1:3000"))
+    }
+
+    func testAdvancedOptionsAndCertificateArguments() {
+        let profile = TunnelProfile(
+            name: "Advanced",
+            sshHost: "example.test",
+            username: "deploy",
+            authentication: .keyFile,
+            identityFile: "/keys/id_ed25519",
+            certificateFile: "/keys/id_ed25519-cert.pub",
+            proxyJump: "bastion",
+            compression: true,
+            connectTimeout: 20,
+            serverAliveInterval: 45,
+            serverAliveCountMax: 5
+        )
+
+        let arguments = SSHArgumentsBuilder.arguments(for: profile)
+
+        XCTAssertTrue(arguments.contains("-C"))
+        XCTAssertTrue(arguments.contains("-J"))
+        XCTAssertTrue(arguments.contains("bastion"))
+        XCTAssertTrue(arguments.contains("ConnectTimeout=20"))
+        XCTAssertTrue(arguments.contains("ServerAliveInterval=45"))
+        XCTAssertTrue(arguments.contains("ServerAliveCountMax=5"))
+        XCTAssertTrue(arguments.contains("CertificateFile=/keys/id_ed25519-cert.pub"))
+        XCTAssertEqual(arguments.last, "deploy@example.test")
     }
 }

@@ -17,4 +17,9 @@ final class ConfigurationStoreTests: XCTestCase {
         let attributes = try FileManager.default.attributesOfItem(atPath: store.configurationURL.path)
         XCTAssertEqual((attributes[.posixPermissions] as? NSNumber)?.intValue, 0o600)
     }
+
+    func testDecodesLegacyRemoteProxyMode() throws {
+        let data = Data("\"remoteProxy\"".utf8)
+        XCTAssertEqual(try JSONDecoder().decode(TunnelMode.self, from: data), .localForward)
+    }
 }

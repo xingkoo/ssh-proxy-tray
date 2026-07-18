@@ -2,6 +2,10 @@ import XCTest
 @testable import SSHProxyCore
 
 final class ProfileValidationTests: XCTestCase {
+    func testDefaultPortAvoidsCommonProxyPorts() {
+        XCTAssertEqual(TunnelProfile().localPort, 18080)
+    }
+
     func testValidSSHConfigProfile() throws {
         let profile = TunnelProfile(name: "Qiniu", sshHost: "qiniu", localPort: 17890)
         XCTAssertNoThrow(try ProfileValidator.validate(profile))
@@ -43,11 +47,19 @@ final class ProfileValidationTests: XCTestCase {
         let profile = TunnelProfile(
             name: "Remote proxy",
             sshHost: "example.test",
-            mode: .remoteProxy,
+            mode: .localForward,
             remotePort: 0
         )
         XCTAssertThrowsError(try ProfileValidator.validate(profile)) { error in
             XCTAssertEqual(error as? ProfileValidationError, .invalidRemotePort)
+        }
+    }
+
+    func testRejectsInvalidAdvancedOptions() {
+        var profile = TunnelProfile(name: "Advanced", sshHost: "example.test")
+        profile.connectTimeout = 0
+        XCTAssertThrowsError(try ProfileValidator.validate(profile)) { error in
+            XCTAssertEqual(error as? ProfileValidationError, .invalidConnectTimeout)
         }
     }
 }

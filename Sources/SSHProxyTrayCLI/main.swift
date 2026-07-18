@@ -36,7 +36,7 @@ func upsert(arguments: [String], store: ConfigurationStore) throws {
     let authentication = AuthenticationMethod(rawValue: value(after: "--auth", in: arguments) ?? "sshConfig")
     guard let authentication else { throw CLIError.invalidValue("--auth must be sshConfig, keyFile, or password") }
     let mode = TunnelMode(rawValue: value(after: "--mode", in: arguments) ?? "socks5")
-    guard let mode else { throw CLIError.invalidValue("--mode must be socks5 or remoteProxy") }
+    guard let mode else { throw CLIError.invalidValue("--mode must be socks5, localForward, or remoteForward") }
 
     var configuration = try store.load()
     let existing = configuration.profiles.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame })
@@ -47,11 +47,17 @@ func upsert(arguments: [String], store: ConfigurationStore) throws {
     profile.username = value(after: "--username", in: arguments) ?? ""
     profile.authentication = authentication
     profile.identityFile = value(after: "--identity-file", in: arguments) ?? ""
+    profile.certificateFile = value(after: "--certificate-file", in: arguments)
     profile.mode = mode
-    profile.localPort = try integer("--local-port", default: 1080, in: arguments)
+    profile.localPort = try integer("--local-port", default: 18080, in: arguments)
     profile.remoteHost = value(after: "--remote-host", in: arguments) ?? "127.0.0.1"
     profile.remotePort = try integer("--remote-port", default: 3128, in: arguments)
     profile.autoConnect = arguments.contains("--auto-connect")
+    profile.proxyJump = value(after: "--proxy-jump", in: arguments)
+    profile.compression = arguments.contains("--compression")
+    profile.connectTimeout = try integer("--connect-timeout", default: 10, in: arguments)
+    profile.serverAliveInterval = try integer("--server-alive-interval", default: 30, in: arguments)
+    profile.serverAliveCountMax = try integer("--server-alive-count-max", default: 3, in: arguments)
 
     try ProfileValidator.validate(profile)
     if let index = configuration.profiles.firstIndex(where: { $0.id == profile.id }) {
@@ -87,9 +93,11 @@ do {
 
         Options:
           --auth sshConfig|keyFile|password
-          --ssh-port PORT --username USER --identity-file PATH
-          --mode socks5|remoteProxy --local-port PORT
+          --ssh-port PORT --username USER --identity-file PATH --certificate-file PATH
+          --mode socks5|localForward|remoteForward --local-port PORT
           --remote-host HOST --remote-port PORT --auto-connect
+          --proxy-jump HOST --compression --connect-timeout SECONDS
+          --server-alive-interval SECONDS --server-alive-count-max COUNT
         """)
     }
 } catch {

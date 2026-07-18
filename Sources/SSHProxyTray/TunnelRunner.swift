@@ -10,6 +10,7 @@ enum TunnelStatus: Equatable {
     case disconnected
     case connecting
     case connected
+    case disconnecting
     case failed(String)
 
     var title: String {
@@ -17,6 +18,7 @@ enum TunnelStatus: Equatable {
         case .disconnected: return "Disconnected"
         case .connecting: return "Connecting"
         case .connected: return "Connected"
+        case .disconnecting: return "Disconnecting"
         case .failed: return "Connection failed"
         }
     }
@@ -26,6 +28,7 @@ enum TunnelStatus: Equatable {
         case .disconnected: return "circle"
         case .connecting: return "arrow.triangle.2.circlepath"
         case .connected: return "checkmark.circle.fill"
+        case .disconnecting: return "stop.circle"
         case .failed: return "exclamationmark.triangle.fill"
         }
     }
@@ -96,7 +99,11 @@ final class TunnelRunner {
             throw error
         }
 
-        waitForLocalPort(profile: profile, process: process, attempt: 0)
+        if profile.mode == .remoteForward {
+            waitForRemoteForward(process: process)
+        } else {
+            waitForLocalPort(profile: profile, process: process, attempt: 0)
+        }
     }
 
     func disconnect() {
@@ -106,9 +113,12 @@ final class TunnelRunner {
             update(.disconnected)
             return
         }
-        if process.isRunning { process.terminate() }
+        if process.isRunning {
+            update(.disconnecting)
+            process.terminate()
+        }
         cleanup(clearProcess: false)
-        update(.disconnected)
+        if !process.isRunning { update(.disconnected) }
     }
 
     private func handleTermination(process: Process, status: Int32) {
@@ -138,6 +148,17 @@ final class TunnelRunner {
             } else if process.isRunning {
                 process.terminate()
                 self.update(.failed("Local proxy port did not open."))
+            }
+        }
+    }
+
+    private func waitForRemoteForward(process: Process) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self, weak process] in
+            guard let self, let process, self.process === process else { return }
+            if process.isRunning {
+                self.askPassBroker?.stop()
+                self.askPassBroker = nil
+                self.update(.connected)
             }
         }
     }

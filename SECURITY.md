@@ -11,6 +11,7 @@ Please report credential exposure, command injection, host-key validation, or lo
 - Saved passwords use macOS Keychain.
 - Tunnel configuration is stored with user-only file permissions and contains no password.
 - Local listeners are restricted to `127.0.0.1` or `localhost`.
+- Remote-forward listeners default to `127.0.0.1`. Binding a remote rule to `0.0.0.0` can expose the local target through the SSH server and also requires compatible server-side `GatewayPorts` policy.
 
 ## SSH Trust
 

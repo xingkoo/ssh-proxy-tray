@@ -6,11 +6,19 @@ import SSHProxyCore
 enum AppModelError: LocalizedError {
     case passwordRequired
     case askPassHelperMissing
+    case localPortInUse(Int)
+    case ruleDisabled
+    case sshConfigMissing
+    case noImportableSSHConfigHosts
 
     var errorDescription: String? {
         switch self {
         case .passwordRequired: return "Enter the SSH password."
         case .askPassHelperMissing: return "The password helper is missing from the app bundle."
+        case .localPortInUse(let port): return "Local port \(port) is already in use. Choose another port."
+        case .ruleDisabled: return "Enable this rule before connecting."
+        case .sshConfigMissing: return "~/.ssh/config does not exist or cannot be read."
+        case .noImportableSSHConfigHosts: return "No new concrete Host aliases were found in ~/.ssh/config."
         }
     }
 }
@@ -19,9 +27,14 @@ enum AppModelError: LocalizedError {
 final class AppModel: ObservableObject {
     @Published var profiles: [TunnelProfile] = [] {
         didSet {
-            for profile in profiles where !profile.savePassword {
-                if oldValue.first(where: { $0.id == profile.id })?.savePassword == true {
+            for profile in profiles {
+                if !profile.savePassword,
+                   oldValue.first(where: { $0.id == profile.id })?.savePassword == true {
                     try? keychain.deletePassword(profileID: profile.id)
+                }
+                if !profile.enabled,
+                   oldValue.first(where: { $0.id == profile.id })?.enabled != false {
+                    disconnect(profileID: profile.id)
                 }
             }
             persistConfiguration()
@@ -34,29 +47,18 @@ final class AppModel: ObservableObject {
         }
     }
     @Published var enteredPassword = ""
-    @Published private(set) var status: TunnelStatus = .disconnected
-    @Published private(set) var logs: [String] = []
-    @Published private(set) var activeProfileID: UUID?
+    @Published private(set) var statuses: [UUID: TunnelStatus] = [:]
+    @Published private(set) var logsByProfile: [UUID: [String]] = [:]
     @Published private(set) var launchAtLoginEnabled = false
     @Published var errorMessage: String?
 
     private let configurationStore = ConfigurationStore()
     private let keychain = KeychainStore()
-    private let runner = TunnelRunner()
+    private var runners: [UUID: TunnelRunner] = [:]
     private var isLoading = true
     private var terminationObserver: NSObjectProtocol?
 
     init() {
-        runner.onUpdate = { [weak self] status, logs in
-            self?.status = status
-            self?.logs = logs
-            if case .disconnected = status { self?.activeProfileID = nil }
-            if case .failed(let message) = status {
-                self?.activeProfileID = nil
-                self?.errorMessage = message
-            }
-        }
-
         do {
             let configuration = try configurationStore.load()
             profiles = configuration.profiles
@@ -72,7 +74,7 @@ final class AppModel: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.runner.disconnect() }
+            MainActor.assumeIsolated { self?.disconnectAll() }
         }
 
         if CommandLine.arguments.contains("--enable-launch-at-login") {
@@ -80,7 +82,7 @@ final class AppModel: ObservableObject {
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-            self?.connectFirstAutomaticProfile()
+            self?.connectAutomaticProfiles()
         }
     }
 
@@ -93,11 +95,55 @@ final class AppModel: ObservableObject {
         return profiles.first(where: { $0.id == selectedProfileID })
     }
 
+    var summaryStatus: TunnelStatus {
+        let values = Array(statuses.values)
+        if values.contains(.connected) { return .connected }
+        if values.contains(.connecting) { return .connecting }
+        if values.contains(.disconnecting) { return .disconnecting }
+        if let failed = values.first(where: {
+            if case .failed = $0 { return true }
+            return false
+        }) { return failed }
+        return .disconnected
+    }
+
+    var connectedCount: Int {
+        statuses.values.filter { $0 == .connected }.count
+    }
+
+    func status(for profileID: UUID) -> TunnelStatus {
+        statuses[profileID] ?? .disconnected
+    }
+
+    func logs(for profileID: UUID) -> [String] {
+        logsByProfile[profileID] ?? []
+    }
+
+    func isRunning(profileID: UUID) -> Bool {
+        switch status(for: profileID) {
+        case .connecting, .connected, .disconnecting: return true
+        case .disconnected, .failed: return false
+        }
+    }
+
     func addProfile() {
-        let usedPorts = Set(profiles.map(\.localPort))
-        var port = 1080
-        while usedPorts.contains(port) { port += 1 }
-        let profile = TunnelProfile(localPort: port)
+        let port = nextAvailableLocalPort(excluding: Set(profiles.map(\.localPort)))
+        let profile = TunnelProfile(isEnabled: true, localPort: port)
+        profiles.append(profile)
+        selectedProfileID = profile.id
+    }
+
+    func duplicateSelectedProfile() {
+        guard var profile = selectedProfile else { return }
+        profile.id = UUID()
+        profile.name += " Copy"
+        profile.autoConnect = false
+        profile.isEnabled = true
+        if profile.mode == .remoteForward {
+            profile.remotePort = min(profile.remotePort + 1, 65535)
+        } else {
+            profile.localPort = nextAvailableLocalPort(excluding: Set(profiles.map(\.localPort)))
+        }
         profiles.append(profile)
         selectedProfileID = profile.id
     }
@@ -105,11 +151,47 @@ final class AppModel: ObservableObject {
     func removeSelectedProfile() {
         guard let selectedProfileID,
               let index = profiles.firstIndex(where: { $0.id == selectedProfileID }) else { return }
-        if activeProfileID == selectedProfileID { disconnect() }
+        disconnect(profileID: selectedProfileID)
         try? keychain.deletePassword(profileID: selectedProfileID)
         profiles.remove(at: index)
+        logsByProfile.removeValue(forKey: selectedProfileID)
+        statuses.removeValue(forKey: selectedProfileID)
         self.selectedProfileID = profiles.first?.id
         enteredPassword = ""
+    }
+
+    func importSSHConfigProfiles() {
+        let configURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".ssh/config")
+        guard let contents = try? String(contentsOf: configURL, encoding: .utf8) else {
+            errorMessage = AppModelError.sshConfigMissing.localizedDescription
+            return
+        }
+
+        let existing = Set(profiles.filter { $0.authentication == .sshConfig }.map { $0.sshHost.lowercased() })
+        let aliases = SSHConfigHostParser.aliases(from: contents)
+            .filter { !existing.contains($0.lowercased()) }
+        guard !aliases.isEmpty else {
+            errorMessage = AppModelError.noImportableSSHConfigHosts.localizedDescription
+            return
+        }
+
+        var usedPorts = Set(profiles.map(\.localPort))
+        var imported: [TunnelProfile] = []
+        for alias in aliases {
+            let port = nextAvailableLocalPort(excluding: usedPorts)
+            usedPorts.insert(port)
+            imported.append(TunnelProfile(
+                isEnabled: true,
+                name: alias,
+                sshHost: alias,
+                authentication: .sshConfig,
+                localPort: port
+            ))
+        }
+        profiles.append(contentsOf: imported)
+        selectedProfileID = imported.first?.id
+        errorMessage = nil
     }
 
     func connectSelected() {
@@ -119,7 +201,14 @@ final class AppModel: ObservableObject {
 
     func connect(_ profile: TunnelProfile) {
         do {
+            guard profile.enabled else { throw AppModelError.ruleDisabled }
+            guard !isRunning(profileID: profile.id) else { return }
             try ProfileValidator.validate(profile)
+            if profile.mode != .remoteForward,
+               !LocalPortAvailability.isAvailable(host: profile.localHost, port: profile.localPort) {
+                throw AppModelError.localPortInUse(profile.localPort)
+            }
+
             var password: String?
             if profile.authentication == .password {
                 password = enteredPassword.isEmpty ? try keychain.password(profileID: profile.id) : enteredPassword
@@ -136,31 +225,48 @@ final class AppModel: ObservableObject {
                !FileManager.default.isExecutableFile(atPath: helper) {
                 throw AppModelError.askPassHelperMissing
             }
+
+            let runner = runners[profile.id] ?? TunnelRunner()
+            runners[profile.id] = runner
+            runner.onUpdate = { [weak self] status, logs in
+                guard let self else { return }
+                self.statuses[profile.id] = status
+                self.logsByProfile[profile.id] = logs
+                if status == .connected, self.selectedProfileID == profile.id {
+                    self.enteredPassword = ""
+                }
+                if case .failed(let message) = status {
+                    self.errorMessage = "\(profile.name): \(message)"
+                }
+                if status == .disconnected,
+                   !self.profiles.contains(where: { $0.id == profile.id }) {
+                    self.runners.removeValue(forKey: profile.id)
+                    self.statuses.removeValue(forKey: profile.id)
+                    self.logsByProfile.removeValue(forKey: profile.id)
+                }
+            }
+
             errorMessage = nil
-            activeProfileID = profile.id
             try runner.connect(profile: profile, password: password, askPassPath: helper)
         } catch {
-            activeProfileID = nil
-            errorMessage = error.localizedDescription
-            status = .failed(error.localizedDescription)
+            statuses[profile.id] = .failed(error.localizedDescription)
+            errorMessage = "\(profile.name): \(error.localizedDescription)"
         }
     }
 
-    func disconnect() {
-        runner.disconnect()
-        activeProfileID = nil
+    func disconnect(profileID: UUID) {
+        runners[profileID]?.disconnect()
+        if runners[profileID] == nil { statuses[profileID] = .disconnected }
     }
 
-    func copyProxyURL() {
-        guard let profile = activeProfileID.flatMap({ id in profiles.first(where: { $0.id == id }) })
-                ?? selectedProfile else { return }
+    func disconnectAll() {
+        for runner in runners.values { runner.disconnect() }
+    }
+
+    func copySelectedEndpoint() {
+        guard let profile = selectedProfile else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(profile.proxyURL, forType: .string)
-    }
-
-    func openSettings() {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        NSApp.activate(ignoringOtherApps: true)
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -178,11 +284,18 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func connectFirstAutomaticProfile() {
-        guard activeProfileID == nil,
-              let profile = profiles.first(where: \.autoConnect) else { return }
-        selectedProfileID = profile.id
-        connect(profile)
+    private func connectAutomaticProfiles() {
+        for (offset, profile) in profiles.filter({ $0.enabled && $0.autoConnect }).enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(offset) * 0.2) { [weak self] in
+                self?.connect(profile)
+            }
+        }
+    }
+
+    private func nextAvailableLocalPort(excluding usedPorts: Set<Int>) -> Int {
+        (18080...18179).first {
+            !usedPorts.contains($0) && LocalPortAvailability.isAvailable(host: "127.0.0.1", port: $0)
+        } ?? 18080
     }
 
     private func persistConfiguration() {
