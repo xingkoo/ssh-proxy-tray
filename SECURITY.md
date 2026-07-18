@@ -1,5 +1,7 @@
 # Security
 
+[English](SECURITY.md) | [简体中文](SECURITY.zh-CN.md)
+
 ## Reporting
 
 Please report credential exposure, command injection, host-key validation, or local port exposure issues privately through GitHub Security Advisories.

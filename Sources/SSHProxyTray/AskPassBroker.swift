@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import SSHProxyCore
 
 enum AskPassBrokerError: LocalizedError {
     case failedToStart
@@ -7,8 +8,10 @@ enum AskPassBrokerError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .failedToStart: return "Could not start the local password broker."
-        case .timedOut: return "The local password broker timed out."
+        case .failedToStart:
+            return SSHProxyL10n.string("askpass.failed_to_start", default: "Could not start the local password broker.")
+        case .timedOut:
+            return SSHProxyL10n.string("askpass.timed_out", default: "The local password broker timed out.")
         }
     }
 }

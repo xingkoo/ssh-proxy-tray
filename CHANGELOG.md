@@ -1,5 +1,14 @@
 # Changelog
 
+[English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
+
+## 0.3.0 - 2026-07-18
+
+- Add complete English and Simplified Chinese app localization that follows the preferred macOS language.
+- Localize connection states, controls, forms, validation, and runtime errors without changing persisted profile values.
+- Add complete Chinese and English README documents plus localized security and changelog documentation.
+- Improve GitHub discoverability with bilingual repository metadata, badges, search-oriented topics, and bilingual release notes.
+
 ## 0.2.0 - 2026-07-18
 
 - Replace the menu bar popover with a dedicated connection-management window opened directly by the status icon.

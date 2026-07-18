@@ -13,12 +13,22 @@ enum AppModelError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .passwordRequired: return "Enter the SSH password."
-        case .askPassHelperMissing: return "The password helper is missing from the app bundle."
-        case .localPortInUse(let port): return "Local port \(port) is already in use. Choose another port."
-        case .ruleDisabled: return "Enable this rule before connecting."
-        case .sshConfigMissing: return "~/.ssh/config does not exist or cannot be read."
-        case .noImportableSSHConfigHosts: return "No new concrete Host aliases were found in ~/.ssh/config."
+        case .passwordRequired:
+            return SSHProxyL10n.string("app_error.password_required", default: "Enter the SSH password.")
+        case .askPassHelperMissing:
+            return SSHProxyL10n.string("app_error.askpass_missing", default: "The password helper is missing from the app bundle.")
+        case .localPortInUse(let port):
+            return SSHProxyL10n.format(
+                "app_error.local_port_in_use",
+                default: "Local port %d is already in use. Choose another port.",
+                port
+            )
+        case .ruleDisabled:
+            return SSHProxyL10n.string("app_error.rule_disabled", default: "Enable this rule before connecting.")
+        case .sshConfigMissing:
+            return SSHProxyL10n.string("app_error.ssh_config_missing", default: "~/.ssh/config does not exist or cannot be read.")
+        case .noImportableSSHConfigHosts:
+            return SSHProxyL10n.string("app_error.no_importable_hosts", default: "No new concrete Host aliases were found in ~/.ssh/config.")
         }
     }
 }
@@ -128,7 +138,11 @@ final class AppModel: ObservableObject {
 
     func addProfile() {
         let port = nextAvailableLocalPort(excluding: Set(profiles.map(\.localPort)))
-        let profile = TunnelProfile(isEnabled: true, localPort: port)
+        let profile = TunnelProfile(
+            isEnabled: true,
+            name: SSHProxyL10n.string("profile.new_tunnel", default: "New Tunnel"),
+            localPort: port
+        )
         profiles.append(profile)
         selectedProfileID = profile.id
     }
@@ -136,7 +150,7 @@ final class AppModel: ObservableObject {
     func duplicateSelectedProfile() {
         guard var profile = selectedProfile else { return }
         profile.id = UUID()
-        profile.name += " Copy"
+        profile.name += SSHProxyL10n.string("profile.copy_suffix", default: " Copy")
         profile.autoConnect = false
         profile.isEnabled = true
         if profile.mode == .remoteForward {

@@ -7,9 +7,12 @@ public enum AuthenticationMethod: String, Codable, CaseIterable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .sshConfig: return "SSH Config"
-        case .keyFile: return "Key / Certificate"
-        case .password: return "Password"
+        case .sshConfig:
+            return SSHProxyL10n.string("authentication.ssh_config", default: "SSH Config")
+        case .keyFile:
+            return SSHProxyL10n.string("authentication.key_certificate", default: "Key / Certificate")
+        case .password:
+            return SSHProxyL10n.string("authentication.password", default: "Password")
         }
     }
 }
@@ -21,9 +24,12 @@ public enum TunnelMode: String, Codable, CaseIterable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .socks5: return "SOCKS Proxy"
-        case .localForward: return "Local Forward"
-        case .remoteForward: return "Remote Forward"
+        case .socks5:
+            return SSHProxyL10n.string("mode.socks_proxy", default: "SOCKS Proxy")
+        case .localForward:
+            return SSHProxyL10n.string("mode.local_forward", default: "Local Forward")
+        case .remoteForward:
+            return SSHProxyL10n.string("mode.remote_forward", default: "Remote Forward")
         }
     }
 

@@ -15,11 +15,16 @@ enum TunnelStatus: Equatable {
 
     var title: String {
         switch self {
-        case .disconnected: return "Disconnected"
-        case .connecting: return "Connecting"
-        case .connected: return "Connected"
-        case .disconnecting: return "Disconnecting"
-        case .failed: return "Connection failed"
+        case .disconnected:
+            return SSHProxyL10n.string("status.disconnected", default: "Disconnected")
+        case .connecting:
+            return SSHProxyL10n.string("status.connecting", default: "Connecting")
+        case .connected:
+            return SSHProxyL10n.string("status.connected", default: "Connected")
+        case .disconnecting:
+            return SSHProxyL10n.string("status.disconnecting", default: "Disconnecting")
+        case .failed:
+            return SSHProxyL10n.string("status.connection_failed", default: "Connection failed")
         }
     }
 
@@ -129,7 +134,11 @@ final class TunnelRunner {
             update(.disconnected)
             return
         }
-        let detail = logs.last(where: { !$0.isEmpty }) ?? "ssh exited with status \(status)."
+        let detail = logs.last(where: { !$0.isEmpty }) ?? SSHProxyL10n.format(
+            "runner.ssh_exited",
+            default: "ssh exited with status %d.",
+            status
+        )
         update(.failed(detail))
     }
 
@@ -147,7 +156,10 @@ final class TunnelRunner {
                 }
             } else if process.isRunning {
                 process.terminate()
-                self.update(.failed("Local proxy port did not open."))
+                self.update(.failed(SSHProxyL10n.string(
+                    "runner.local_port_did_not_open",
+                    default: "Local proxy port did not open."
+                )))
             }
         }
     }

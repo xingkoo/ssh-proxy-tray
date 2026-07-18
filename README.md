@@ -1,39 +1,52 @@
 # SSH Proxy Tray
 
-SSH Proxy Tray is a small native macOS app for running proxy and port-forwarding rules through SSH. A persistent status icon opens a dedicated connection-management window. The app uses the OpenSSH client already included with macOS.
+[简体中文](README.md) | [English](README.en.md)
 
-## Modes
+[![CI](https://github.com/xingkoo/ssh-proxy-tray/actions/workflows/ci.yml/badge.svg)](https://github.com/xingkoo/ssh-proxy-tray/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/xingkoo/ssh-proxy-tray)](https://github.com/xingkoo/ssh-proxy-tray/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black)](https://www.apple.com/macos/)
 
-- **SOCKS Proxy**: creates a local SOCKS5 proxy with OpenSSH dynamic forwarding (`ssh -D`). No proxy service is required on the server.
-- **Local Forward**: exposes a service reachable from the SSH server on a local TCP port (`ssh -L`). A remote HTTP/HTTPS proxy is one use of this general rule.
-- **Remote Forward**: exposes a local service through a TCP port on the SSH server (`ssh -R`).
+SSH Proxy Tray 是一个轻量、原生的 macOS SSH 代理与端口转发工具。它使用 macOS 自带的 OpenSSH，通过独立管理窗口同时运行多个 SOCKS 代理、本地转发和远程转发规则；状态栏图标只负责常驻状态与快速打开。
 
-All local listeners bind to loopback only.
+适合以下场景：
 
-## Features
+- 临时使用 SSH 主机作为 SOCKS5 代理，不安装专用代理客户端。
+- 已有系统代理，但某个应用需要独立的代理出口或端口。
+- 把 SSH 服务器可访问的服务映射到本机端口。
+- 通过 SSH 服务器上的远程端口访问本机服务。
 
-- A status icon that directly opens a separate management window
-- Multiple concurrent rules with independent enabled and runtime states
-- Manual connect and disconnect per rule
-- SSH config aliases
-- Import from `~/.ssh/config`
-- Private key file paths
-- Optional OpenSSH certificate files
-- Password prompt with optional macOS Keychain storage
-- ProxyJump, compression, connect timeout, and keepalive settings
-- Auto-connect per profile
-- Launch at login
-- Copyable proxy or forwarding endpoint
-- Local port conflict detection
-- No runtime dependencies or embedded SSH implementation
+## 核心功能
 
-## Requirements
+- 原生 SwiftUI macOS 应用，运行时无第三方依赖。
+- 中英文界面，自动跟随 macOS 首选语言。
+- 多条规则并发运行，每条规则独立启用、连接、断开和记录状态。
+- 清晰显示未连接、正在连接、已连接、正在断开和连接失败。
+- 支持 `~/.ssh/config` Host alias 及一键导入具体 Host。
+- 支持私钥、OpenSSH certificate、用户名密码和可选钥匙串保存。
+- 支持 ProxyJump、压缩、连接超时和 SSH keepalive 参数。
+- 显式配置监听端口；新规则从 `18080` 起选择可用端口。
+- 启动前检测本地端口冲突。
+- 支持登录时启动和每条规则的自动连接。
+- 不修改 macOS 系统代理、PAC 或 VPN 设置。
 
-- macOS 13 or newer
-- Xcode 15.3 or newer to build from source
-- A reachable SSH server with TCP forwarding enabled
+## 转发类型
 
-## Build and install
+| 类型 | OpenSSH 参数 | 作用 |
+| --- | --- | --- |
+| SOCKS 代理 | `ssh -D` | 在本机创建 SOCKS5 代理，不要求服务器运行代理服务 |
+| 本地转发 | `ssh -L` | 通过本机端口访问 SSH 服务器可达的远端服务 |
+| 远程转发 | `ssh -R` | 通过 SSH 服务器上的端口访问本机服务 |
+
+所有本地监听只允许绑定 `127.0.0.1` 或 `localhost`。远程转发默认绑定远端 loopback；主动改成 `0.0.0.0` 可能暴露本机服务，并依赖服务器的 `GatewayPorts` 配置。
+
+## 系统要求
+
+- macOS 13 或更高版本。
+- 从源码构建需要 Xcode 15.3 或更高版本。
+- 可访问且允许 TCP forwarding 的 SSH 服务器。
+
+## 构建与安装
 
 ```bash
 swift test
@@ -41,25 +54,27 @@ swift test
 ./scripts/install.sh
 ```
 
-To enable launch at login during local installation:
+安装时启用登录启动：
 
 ```bash
 ./scripts/install.sh --launch-at-login
 ```
 
-The local build is ad-hoc signed and installed as `/Applications/SSH Proxy Tray.app`. Public binary distribution requires Apple Developer ID signing and notarization; source builds do not.
+应用安装到 `/Applications/SSH Proxy Tray.app`。本地构建使用 ad-hoc 签名；公开分发已签名二进制仍需要 Apple Developer ID 和 notarization，当前 GitHub Release 以源码发布为主。
 
-## Configure from the UI
+## 界面配置
 
-Choose the menu bar icon to open the management window, add a rule, and select an authentication mode:
+点击状态栏图标打开独立管理窗口，添加规则并选择认证方式：
 
-- **SSH Config** uses an alias such as `my-server` from `~/.ssh/config`.
-- **Key / Certificate** uses an explicit host, user, port, private key, and optional OpenSSH certificate path.
-- **Password** asks at connection time. Enable **Save password in Keychain** only when desired.
+- **SSH 配置**：使用 `~/.ssh/config` 中的 alias，例如 `my-server`。
+- **密钥 / 证书**：填写主机、用户名、端口、私钥路径和可选 OpenSSH certificate。
+- **密码**：连接时输入；只有主动启用“将密码保存到钥匙串”才会持久保存。
 
-## Configure from the CLI
+每条规则都可以单独设置端口、启用状态、自动连接，并可手工连接或断开。
 
-The build includes `ssh-proxy-trayctl` for reproducible local setup:
+## CLI 配置
+
+构建产物包含 `ssh-proxy-trayctl`，便于复现本地配置：
 
 ```bash
 .build/release/ssh-proxy-trayctl upsert \
@@ -67,11 +82,11 @@ The build includes `ssh-proxy-trayctl` for reproducible local setup:
   --ssh-host my-server \
   --auth sshConfig \
   --mode socks5 \
-  --local-port 1080 \
+  --local-port 18080 \
   --auto-connect
 ```
 
-For a service reachable from the SSH server at `127.0.0.1:3128`:
+本地转发：
 
 ```bash
 .build/release/ssh-proxy-trayctl upsert \
@@ -84,7 +99,7 @@ For a service reachable from the SSH server at `127.0.0.1:3128`:
   --remote-port 3128
 ```
 
-To expose a local service on port 3000 through remote port 23000:
+远程转发：
 
 ```bash
 .build/release/ssh-proxy-trayctl upsert \
@@ -97,35 +112,34 @@ To expose a local service on port 3000 through remote port 23000:
   --remote-port 23000
 ```
 
-## Use the proxy
+## 使用 SOCKS 代理
 
-Configure the target application with the URL shown in the tray, for example:
+将目标应用的代理地址设置为：
 
 ```text
-socks5://127.0.0.1:1080
+socks5://127.0.0.1:18080
 ```
 
-For command-line DNS resolution through SOCKS, use the `socks5h` scheme:
+命令行需要通过 SOCKS 解析 DNS 时使用 `socks5h`：
 
 ```bash
-curl --proxy socks5h://127.0.0.1:1080 https://example.com
+curl --proxy socks5h://127.0.0.1:18080 https://example.com
 ```
 
-## Security model
+## 安全边界
 
-- OpenSSH arguments are passed directly without a shell.
-- Unsaved passwords are kept in memory and passed through a short-lived, token-protected loopback channel to the askpass helper.
-- Saved passwords are stored in macOS Keychain.
-- New host keys are accepted once; changed keys remain blocked by OpenSSH.
-- Remote-forward listeners default to remote loopback; changing the bind address can expose the local service through the SSH server.
-- Profile files are created with mode `0600`.
+- SSH 参数以数组直接传给 `/usr/bin/ssh`，不经过 shell 拼接。
+- 未保存密码只短暂存在于应用内存，并通过随机令牌保护的 loopback askpass 通道交给 OpenSSH。
+- 保存的密码进入 macOS 钥匙串；profile 文件不保存密码并使用 `0600` 权限。
+- 新主机密钥使用 OpenSSH `accept-new`；已变化的主机密钥仍会被拒绝。
+- 应用不会自动扩大本地或远程监听地址。
 
-See [SECURITY.md](SECURITY.md) for reporting and credential details.
+安全问题请参阅 [SECURITY.md](SECURITY.md)。
 
-## Windows roadmap
+## Windows 路线
 
-The profile, validation, and SSH argument model is isolated from the macOS UI. A future Windows build can provide a tray UI and select either the Windows OpenSSH client or a bundled, audited SSH backend without changing profile semantics.
+profile、校验和 SSH 参数模型已经与 macOS UI 分离。未来 Windows 版本可以复用这些语义，再独立选择 Windows OpenSSH 或经过审计的内置 SSH backend；当前版本不提前实现 Windows。
 
-## License
+## 许可证
 
-MIT
+[MIT](LICENSE)

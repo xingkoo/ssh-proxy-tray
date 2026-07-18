@@ -2,6 +2,10 @@ import AppKit
 import SSHProxyCore
 import SwiftUI
 
+private func ui(_ key: String, _ defaultValue: String) -> String {
+    SSHProxyL10n.string(key, default: defaultValue)
+}
+
 struct MainWindowView: View {
     @EnvironmentObject private var model: AppModel
 
@@ -26,7 +30,7 @@ struct MainWindowView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .help("Add rule")
+                    .help(ui("ui.add_rule", "Add rule"))
 
                     Button {
                         model.duplicateSelectedProfile()
@@ -34,14 +38,14 @@ struct MainWindowView: View {
                         Image(systemName: "doc.on.doc")
                     }
                     .disabled(model.selectedProfileID == nil)
-                    .help("Duplicate rule")
+                    .help(ui("ui.duplicate_rule", "Duplicate rule"))
 
                     Button {
                         model.importSSHConfigProfiles()
                     } label: {
                         Image(systemName: "square.and.arrow.down")
                     }
-                    .help("Import hosts from ~/.ssh/config")
+                    .help(ui("ui.import_ssh_config_help", "Import hosts from ~/.ssh/config"))
 
                     Button(role: .destructive) {
                         model.removeSelectedProfile()
@@ -49,7 +53,7 @@ struct MainWindowView: View {
                         Image(systemName: "trash")
                     }
                     .disabled(model.selectedProfileID == nil)
-                    .help("Delete rule")
+                    .help(ui("ui.delete_rule", "Delete rule"))
 
                     Spacer()
                 }
@@ -61,7 +65,7 @@ struct MainWindowView: View {
 
                 HStack {
                     Toggle(
-                        "Launch at login",
+                        ui("ui.launch_at_login", "Launch at login"),
                         isOn: Binding(
                             get: { model.launchAtLoginEnabled },
                             set: { model.setLaunchAtLogin($0) }
@@ -78,7 +82,7 @@ struct MainWindowView: View {
                         Image(systemName: "power")
                     }
                     .buttonStyle(.borderless)
-                    .help("Quit")
+                    .help(ui("ui.quit", "Quit"))
                 }
                 .padding(.horizontal, 12)
                 .frame(height: 42)
@@ -112,7 +116,7 @@ private struct RuleRow: View {
                 .frame(width: 18, height: 18)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(profile.name.isEmpty ? "Unnamed Rule" : profile.name)
+                Text(profile.name.isEmpty ? ui("ui.unnamed_rule", "Unnamed Rule") : profile.name)
                     .lineLimit(1)
                 Text("\(profile.mode.displayName)  \(profile.endpointSummary)")
                     .font(.system(.caption, design: .monospaced))
@@ -145,7 +149,7 @@ private struct RuleRow: View {
     }
 
     private var statusTitle: String {
-        profile.enabled ? status.title : "Disabled"
+        profile.enabled ? status.title : ui("status.disabled", "Disabled")
     }
 
     private var statusColor: Color {
@@ -175,16 +179,16 @@ private struct RuleDetailView: View {
                     .frame(width: 20, height: 20)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(profile.name.isEmpty ? "Unnamed Rule" : profile.name)
+                    Text(profile.name.isEmpty ? ui("ui.unnamed_rule", "Unnamed Rule") : profile.name)
                         .font(.headline)
-                    Text(profile.enabled ? status.title : "Disabled")
+                    Text(profile.enabled ? status.title : ui("status.disabled", "Disabled"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
-                Toggle("Enabled", isOn: enabledBinding)
+                Toggle(ui("ui.enabled", "Enabled"), isOn: enabledBinding)
                     .toggleStyle(.switch)
                     .controlSize(.small)
 
@@ -193,20 +197,20 @@ private struct RuleDetailView: View {
                 } label: {
                     Image(systemName: "doc.on.doc")
                 }
-                .help("Copy endpoint")
+                .help(ui("ui.copy_endpoint", "Copy endpoint"))
 
                 if running {
                     Button(role: .destructive) {
                         model.disconnect(profileID: profile.id)
                     } label: {
-                        Label("Disconnect", systemImage: "stop.fill")
+                        Label(ui("ui.disconnect", "Disconnect"), systemImage: "stop.fill")
                     }
                     .disabled(status == .disconnecting)
                 } else {
                     Button {
                         model.connect(profile)
                     } label: {
-                        Label("Connect", systemImage: "play.fill")
+                        Label(ui("ui.connect", "Connect"), systemImage: "play.fill")
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(!profile.enabled)
@@ -218,74 +222,85 @@ private struct RuleDetailView: View {
             Divider()
 
             Form {
-                Section("Rule") {
-                    TextField("Name", text: $profile.name)
+                Section(ui("ui.section.rule", "Rule")) {
+                    TextField(ui("ui.name", "Name"), text: $profile.name)
 
-                    Picker("Type", selection: $profile.mode) {
+                    Picker(ui("ui.type", "Type"), selection: $profile.mode) {
                         ForEach(TunnelMode.allCases, id: \.self) { mode in
                             Text(mode.displayName).tag(mode)
                         }
                     }
                     .pickerStyle(.segmented)
 
-                    Toggle("Connect when the app starts", isOn: $profile.autoConnect)
+                    Toggle(
+                        ui("ui.connect_on_start", "Connect when the app starts"),
+                        isOn: $profile.autoConnect
+                    )
                 }
 
-                Section("Forwarding") {
+                Section(ui("ui.section.forwarding", "Forwarding")) {
                     forwardingFields
                 }
 
-                Section("SSH Connection") {
-                    Picker("Authentication", selection: $profile.authentication) {
+                Section(ui("ui.section.ssh_connection", "SSH Connection")) {
+                    Picker(ui("ui.authentication", "Authentication"), selection: $profile.authentication) {
                         ForEach(AuthenticationMethod.allCases, id: \.self) { method in
                             Text(method.displayName).tag(method)
                         }
                     }
 
                     TextField(
-                        profile.authentication == .sshConfig ? "Host alias" : "Host",
+                        profile.authentication == .sshConfig
+                            ? ui("ui.host_alias", "Host alias")
+                            : ui("ui.host", "Host"),
                         text: $profile.sshHost
                     )
 
                     if profile.authentication != .sshConfig {
-                        TextField("SSH port", value: $profile.sshPort, format: .number)
-                        TextField("Username", text: $profile.username)
+                        TextField(ui("ui.ssh_port", "SSH port"), value: $profile.sshPort, format: .number)
+                        TextField(ui("ui.username", "Username"), text: $profile.username)
                     }
 
                     if profile.authentication == .keyFile {
                         fileField(
-                            title: "Private key",
+                            title: ui("ui.private_key", "Private key"),
                             value: $profile.identityFile,
-                            panelTitle: "Choose SSH Private Key"
+                            panelTitle: ui("ui.choose_private_key", "Choose SSH Private Key")
                         )
                         fileField(
-                            title: "SSH certificate",
+                            title: ui("ui.ssh_certificate", "SSH certificate"),
                             value: optionalStringBinding(\.certificateFile),
-                            panelTitle: "Choose SSH Certificate"
+                            panelTitle: ui("ui.choose_ssh_certificate", "Choose SSH Certificate")
                         )
                     }
 
                     if profile.authentication == .password {
-                        SecureField("Password", text: $password)
-                        Toggle("Save password in Keychain", isOn: $profile.savePassword)
+                        SecureField(ui("ui.password", "Password"), text: $password)
+                        Toggle(
+                            ui("ui.save_password_keychain", "Save password in Keychain"),
+                            isOn: $profile.savePassword
+                        )
                     }
                 }
 
-                Section("Advanced SSH") {
+                Section(ui("ui.section.advanced_ssh", "Advanced SSH")) {
                     TextField("ProxyJump", text: optionalStringBinding(\.proxyJump))
-                    Toggle("Compression", isOn: optionalBoolBinding(\.compression, default: false))
+                    Toggle(
+                        ui("ui.compression", "Compression"),
+                        isOn: optionalBoolBinding(\.compression, default: false)
+                    )
                     TextField(
-                        "Connect timeout (seconds)",
+                        ui("ui.connect_timeout", "Connect timeout (seconds)"),
                         value: optionalIntBinding(\.connectTimeout, default: 10),
                         format: .number
                     )
                     TextField(
-                        "Server alive interval (seconds)",
+                        ui("ui.server_alive_interval", "Server alive interval (seconds)"),
                         value: optionalIntBinding(\.serverAliveInterval, default: 30),
                         format: .number
                     )
                     TextField(
-                        "Server alive count",
+                        ui("ui.server_alive_count", "Server alive count"),
                         value: optionalIntBinding(\.serverAliveCountMax, default: 3),
                         format: .number
                     )
@@ -301,7 +316,7 @@ private struct RuleDetailView: View {
 
                 let logs = model.logs(for: profile.id)
                 if !logs.isEmpty {
-                    Section("Connection Log") {
+                    Section(ui("ui.section.connection_log", "Connection Log")) {
                         Text(logs.suffix(8).joined(separator: "\n"))
                             .font(.system(.caption, design: .monospaced))
                             .textSelection(.enabled)
@@ -317,18 +332,41 @@ private struct RuleDetailView: View {
     private var forwardingFields: some View {
         switch profile.mode {
         case .socks5:
-            TextField("Local bind address", text: $profile.localHost)
-            TextField("Local proxy port", value: $profile.localPort, format: .number)
+            TextField(ui("ui.local_bind_address", "Local bind address"), text: $profile.localHost)
+            TextField(
+                ui("ui.local_proxy_port", "Local proxy port"),
+                value: $profile.localPort,
+                format: .number
+            )
         case .localForward:
-            TextField("Local bind address", text: $profile.localHost)
-            TextField("Local listen port", value: $profile.localPort, format: .number)
-            TextField("Remote destination host", text: $profile.remoteHost)
-            TextField("Remote destination port", value: $profile.remotePort, format: .number)
+            TextField(ui("ui.local_bind_address", "Local bind address"), text: $profile.localHost)
+            TextField(
+                ui("ui.local_listen_port", "Local listen port"),
+                value: $profile.localPort,
+                format: .number
+            )
+            TextField(
+                ui("ui.remote_destination_host", "Remote destination host"),
+                text: $profile.remoteHost
+            )
+            TextField(
+                ui("ui.remote_destination_port", "Remote destination port"),
+                value: $profile.remotePort,
+                format: .number
+            )
         case .remoteForward:
-            TextField("Remote bind address", text: $profile.remoteHost)
-            TextField("Remote listen port", value: $profile.remotePort, format: .number)
-            TextField("Local target host", text: $profile.localHost)
-            TextField("Local target port", value: $profile.localPort, format: .number)
+            TextField(ui("ui.remote_bind_address", "Remote bind address"), text: $profile.remoteHost)
+            TextField(
+                ui("ui.remote_listen_port", "Remote listen port"),
+                value: $profile.remotePort,
+                format: .number
+            )
+            TextField(ui("ui.local_target_host", "Local target host"), text: $profile.localHost)
+            TextField(
+                ui("ui.local_target_port", "Local target port"),
+                value: $profile.localPort,
+                format: .number
+            )
         }
     }
 
@@ -410,21 +448,24 @@ private struct EmptyRulesView: View {
             Image(systemName: "point.3.connected.trianglepath.dotted")
                 .font(.system(size: 34))
                 .foregroundStyle(.secondary)
-            Text("No Rules")
+            Text(ui("ui.no_rules", "No Rules"))
                 .font(.headline)
 
             HStack {
                 Button {
                     model.addProfile()
                 } label: {
-                    Label("Add Rule", systemImage: "plus")
+                    Label(ui("ui.add_rule_title", "Add Rule"), systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
 
                 Button {
                     model.importSSHConfigProfiles()
                 } label: {
-                    Label("Import SSH Config", systemImage: "square.and.arrow.down")
+                    Label(
+                        ui("ui.import_ssh_config", "Import SSH Config"),
+                        systemImage: "square.and.arrow.down"
+                    )
                 }
             }
 

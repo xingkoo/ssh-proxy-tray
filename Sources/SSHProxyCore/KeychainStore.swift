@@ -10,7 +10,11 @@ public enum KeychainError: LocalizedError {
             if let message = SecCopyErrorMessageString(status, nil) as String? {
                 return message
             }
-            return "Keychain operation failed (\(status))."
+            return SSHProxyL10n.format(
+                "keychain.operation_failed",
+                default: "Keychain operation failed (%d).",
+                status
+            )
         }
     }
 }

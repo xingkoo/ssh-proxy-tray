@@ -12,6 +12,10 @@ if [[ ! -f "$ROOT/Resources/AppIcon.icns" ]]; then
     "$ROOT/scripts/generate-icon.sh"
 fi
 
+for localization in en zh-Hans; do
+    plutil -lint "$ROOT/Resources/$localization.lproj/Localizable.strings" >/dev/null
+done
+
 swift build -c release --product SSHProxyTray
 swift build -c release --product SSHAskPass
 swift build -c release --product ssh-proxy-trayctl
@@ -22,6 +26,7 @@ cp "$ROOT/.build/release/SSHProxyTray" "$BIN_DIR/SSHProxyTray"
 cp "$ROOT/.build/release/SSHAskPass" "$BIN_DIR/SSHAskPass"
 cp "$ROOT/Config/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
+cp -R "$ROOT/Resources/en.lproj" "$ROOT/Resources/zh-Hans.lproj" "$RESOURCES_DIR/"
 
 chmod 755 "$BIN_DIR/SSHProxyTray" "$BIN_DIR/SSHAskPass"
 codesign --force --deep --sign - "$APP"

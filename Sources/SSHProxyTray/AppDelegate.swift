@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import SSHProxyCore
 import SwiftUI
 
 @MainActor
@@ -57,7 +58,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.target = self
         item.button?.action = #selector(openMainWindow)
-        item.button?.toolTip = "Open SSH Proxy Tray"
+        item.button?.toolTip = SSHProxyL10n.string(
+            "status_item.open",
+            default: "Open SSH Proxy Tray"
+        )
         statusItem = item
         updateStatusItem()
     }
@@ -75,8 +79,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         image?.isTemplate = true
         statusItem?.button?.image = image
         statusItem?.button?.toolTip = model.connectedCount > 0
-            ? "Open SSH Proxy Tray - \(model.connectedCount) connected"
-            : "Open SSH Proxy Tray"
+            ? SSHProxyL10n.format(
+                "status_item.connected_count",
+                default: "Open SSH Proxy Tray - %d connected",
+                model.connectedCount
+            )
+            : SSHProxyL10n.string("status_item.open", default: "Open SSH Proxy Tray")
     }
 
     @objc private func openMainWindow() {

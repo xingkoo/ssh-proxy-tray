@@ -18,20 +18,34 @@ public enum ProfileValidationError: LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .missingName: return "Enter a profile name."
-        case .missingSSHHost: return "Enter an SSH host or config alias."
-        case .missingUsername: return "Enter the SSH username."
-        case .invalidSSHPort: return "SSH port must be between 1 and 65535."
-        case .missingIdentityFile: return "Choose a private key file."
-        case .identityFileNotFound: return "The private key file does not exist."
-        case .certificateFileNotFound: return "The SSH certificate file does not exist."
-        case .invalidLocalHost: return "Local bind host must be 127.0.0.1 or localhost."
-        case .invalidLocalPort: return "Local port must be between 1 and 65535."
-        case .missingRemoteHost: return "Enter the remote destination or bind host."
-        case .invalidRemotePort: return "Remote port must be between 1 and 65535."
-        case .invalidConnectTimeout: return "Connect timeout must be between 1 and 120 seconds."
-        case .invalidServerAliveInterval: return "Server alive interval must be between 0 and 3600 seconds."
-        case .invalidServerAliveCountMax: return "Server alive count must be between 1 and 20."
+        case .missingName:
+            return SSHProxyL10n.string("validation.missing_name", default: "Enter a profile name.")
+        case .missingSSHHost:
+            return SSHProxyL10n.string("validation.missing_ssh_host", default: "Enter an SSH host or config alias.")
+        case .missingUsername:
+            return SSHProxyL10n.string("validation.missing_username", default: "Enter the SSH username.")
+        case .invalidSSHPort:
+            return SSHProxyL10n.string("validation.invalid_ssh_port", default: "SSH port must be between 1 and 65535.")
+        case .missingIdentityFile:
+            return SSHProxyL10n.string("validation.missing_identity_file", default: "Choose a private key file.")
+        case .identityFileNotFound:
+            return SSHProxyL10n.string("validation.identity_file_not_found", default: "The private key file does not exist.")
+        case .certificateFileNotFound:
+            return SSHProxyL10n.string("validation.certificate_file_not_found", default: "The SSH certificate file does not exist.")
+        case .invalidLocalHost:
+            return SSHProxyL10n.string("validation.invalid_local_host", default: "Local bind host must be 127.0.0.1 or localhost.")
+        case .invalidLocalPort:
+            return SSHProxyL10n.string("validation.invalid_local_port", default: "Local port must be between 1 and 65535.")
+        case .missingRemoteHost:
+            return SSHProxyL10n.string("validation.missing_remote_host", default: "Enter the remote destination or bind host.")
+        case .invalidRemotePort:
+            return SSHProxyL10n.string("validation.invalid_remote_port", default: "Remote port must be between 1 and 65535.")
+        case .invalidConnectTimeout:
+            return SSHProxyL10n.string("validation.invalid_connect_timeout", default: "Connect timeout must be between 1 and 120 seconds.")
+        case .invalidServerAliveInterval:
+            return SSHProxyL10n.string("validation.invalid_server_alive_interval", default: "Server alive interval must be between 0 and 3600 seconds.")
+        case .invalidServerAliveCountMax:
+            return SSHProxyL10n.string("validation.invalid_server_alive_count", default: "Server alive count must be between 1 and 20.")
         }
     }
 }
