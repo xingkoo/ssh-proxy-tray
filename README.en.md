@@ -9,6 +9,8 @@
 
 SSH Proxy Tray is a lightweight native macOS app for SSH proxies and port forwarding. It uses the OpenSSH client included with macOS and runs multiple proxy, local-forward, and remote-forward rules from a dedicated management window. One Proxy rule can expose both SOCKS5 and HTTP/HTTPS local endpoints through the same SSH tunnel. The status icon is only a persistent status and quick-open entry point.
 
+![SSH Proxy Tray main window](docs/images/ssh-proxy-tray-main-window.png)
+
 Typical uses include:
 
 - Temporarily using an SSH host as a SOCKS5 or HTTP/HTTPS proxy without a dedicated proxy client.

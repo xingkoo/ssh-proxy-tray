@@ -9,6 +9,8 @@
 
 SSH Proxy Tray 是一个轻量、原生的 macOS SSH 代理与端口转发工具。它使用 macOS 自带的 OpenSSH，通过独立管理窗口同时运行多个代理、本地转发和远程转发规则；一个代理规则可以用同一条 SSH 隧道同时提供 SOCKS5 与 HTTP/HTTPS 两个本地端点。状态栏图标只负责常驻状态与快速打开。
 
+![SSH Proxy Tray 中文主窗口](docs/images/ssh-proxy-tray-main-window.png)
+
 适合以下场景：
 
 - 临时使用 SSH 主机作为 SOCKS5 或 HTTP/HTTPS 代理，不安装专用代理客户端。
