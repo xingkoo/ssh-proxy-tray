@@ -2,8 +2,8 @@
 
 [简体中文](README.md) | [English](README.en.md)
 
-[![CI](https://github.com/xingkoo/ssh-proxy-tray/actions/workflows/ci.yml/badge.svg)](https://github.com/xingkoo/ssh-proxy-tray/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/xingkoo/ssh-proxy-tray)](https://github.com/xingkoo/ssh-proxy-tray/releases/latest)
+[![CI](https://github.com/peanut-opensource/ssh-proxy-tray/actions/workflows/ci.yml/badge.svg)](https://github.com/peanut-opensource/ssh-proxy-tray/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/peanut-opensource/ssh-proxy-tray)](https://github.com/peanut-opensource/ssh-proxy-tray/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black)](https://www.apple.com/macos/)
 

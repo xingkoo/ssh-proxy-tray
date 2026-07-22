@@ -2,6 +2,8 @@
 
 This repository contains the SSH Proxy Tray macOS application.
 
+This is a public code repository in the Open Source Project. Project plans, status, and decisions live in the project-management repository two levels above. If the local ignored company-rules/ directory exists, read company-rules/core.md and company-rules/code-repository.md before this file.
+
 ## Read First
 
 1. `README.md`
